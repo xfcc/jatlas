@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Status {
+  Active
+  Retired
+}
+
+enum Tier {
+  // Active
+  Infinite
+  Premium
+  Impression
+
+  // Retired
+  Honor
+  Fame
+  Classic
+  Archive
+  Opus
+}
+
+model Actress {
+  id          Int      @id @default(autoincrement())
+  name        String
+  status      Status
+  tier        Tier
+  video_count Int
+  external_id String?  @unique
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
