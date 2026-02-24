@@ -2,19 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Status, Tier } from "@prisma/client";
 
-const activeTiers = [Tier.Infinite, Tier.Premium, Tier.Impression];
-const retiredTiers = [Tier.Honor, Tier.Fame, Tier.Classic, Tier.Archive, Tier.Opus];
-
-function isValidTierForStatus(status: Status, tier: Tier): boolean {
-  if (status === Status.Active) {
-    return activeTiers.includes(tier);
-  }
-  if (status === Status.Retired) {
-    return retiredTiers.includes(tier);
-  }
-  return false;
-}
-
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -36,16 +23,12 @@ export async function PUT(
 ) {
   const id = parseInt(params.id, 10);
   const body = await request.json();
-  const { name, status, tier, video_count, external_id } = body;
-
-  if (status && tier && !isValidTierForStatus(status, tier)) {
-    return NextResponse.json({ error: "Invalid tier for the given status" }, { status: 400 });
-  }
+  const { name, status, tierId, video_count, external_id } = body;
 
   try {
     const updatedActress = await prisma.actress.update({
       where: { id },
-      data: { name, status, tier, video_count, external_id },
+      data: { name, status, tierId, video_count, external_id },
     });
     return NextResponse.json(updatedActress);
   } catch (error) {

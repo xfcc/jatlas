@@ -7,41 +7,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Actress, Status, Tier } from '@/types';
+import { type Actress, Status, type Tier } from '@/types';
 import { ArrowUpDown, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ActressForm } from './ActressForm';
-import { isOverloaded } from '@/lib/tier';
 import { cn } from '@/lib/utils';
 
 export function ActressTable() {
   const [actresses, setActresses] = useState<Actress[]>([]);
+  const [tiers, setTiers] = useState<Tier[]>([]);
   const [statusFilter, setStatusFilter] = useState<Status | 'all'>('all');
-  const [tierFilter, setTierFilter] = useState<Tier | 'all'>('all');
+  const [tierFilter, setTierFilter] = useState<string | 'all'>('all');
   const [sortBy, setSortBy] = useState('updated_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedActress, setSelectedActress] = useState<Actress | undefined>(undefined);
 
-  const fetchActresses = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (statusFilter !== 'all') {
-      params.append('status', statusFilter);
-    }
-    if (tierFilter !== 'all') {
-      params.append('tier', tierFilter);
-    }
-    params.append('sortBy', sortBy);
-    params.append('order', sortOrder);
+  const tierMap = new Map(tiers.map((t) => [t.id, t]));
 
-    const response = await fetch(`/api/actresses?${params.toString()}`);
-    const data = await response.json();
-    setActresses(data);
+  const fetchActressesAndTiers = useCallback(async () => {
+    const tierPromise = fetch('/api/tiers').then(res => res.json());
+    
+    const actressParams = new URLSearchParams();
+    if (statusFilter !== 'all') actressParams.append('status', statusFilter);
+    if (tierFilter !== 'all') actressParams.append('tierId', tierFilter);
+    actressParams.append('sortBy', sortBy);
+    actressParams.append('order', sortOrder);
+    const actressPromise = fetch(`/api/actresses?${actressParams.toString()}`).then(res => res.json());
+
+    const [tiersData, actressesData] = await Promise.all([tierPromise, actressPromise]);
+    setTiers(tiersData);
+    setActresses(actressesData);
+
   }, [statusFilter, tierFilter, sortBy, sortOrder]);
 
   useEffect(() => {
-    fetchActresses();
-  }, [fetchActresses]);
+    fetchActressesAndTiers();
+  }, [fetchActressesAndTiers]);
+
+  const isOverloaded = (tierId: number, videoCount: number) => {
+    const tier = tierMap.get(tierId);
+    if (!tier || tier.video_limit === null) return false;
+    return videoCount > tier.video_limit;
+  };
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -58,15 +66,13 @@ export function ActressTable() {
 
   const handleSave = () => {
     setIsFormOpen(false);
-    fetchActresses();
+    fetchActressesAndTiers();
   };
 
   const handleDelete = async (id: number) => {
-    const response = await fetch(`/api/actresses/${id}`, {
-      method: 'DELETE',
-    });
+    const response = await fetch(`/api/actresses/${id}`, { method: 'DELETE' });
     if (response.ok) {
-      fetchActresses();
+      fetchActressesAndTiers();
     }
   };
 
@@ -91,14 +97,14 @@ export function ActressTable() {
               ))}
             </SelectContent>
           </Select>
-          <Select onValueChange={(value) => setTierFilter(value as Tier | 'all')} value={tierFilter}>
+          <Select onValueChange={(value) => setTierFilter(value as string | 'all')} value={tierFilter}>
             <SelectTrigger className="w-[180px] ml-4">
               <SelectValue placeholder="Filter by tier" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Tiers</SelectItem>
-              {Object.values(Tier).map((tier) => (
-                <SelectItem key={tier} value={tier}>{tier}</SelectItem>
+              {tiers.map((tier) => (
+                <SelectItem key={tier.id} value={tier.id.toString()}>{tier.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -126,7 +132,7 @@ export function ActressTable() {
             <TableRow>
               <TableHead><Button variant="ghost" onClick={() => handleSort('name')}>Name<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
               <TableHead><Button variant="ghost" onClick={() => handleSort('status')}>Status<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
-              <TableHead><Button variant="ghost" onClick={() => handleSort('tier')}>Tier<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
+              <TableHead><Button variant="ghost" onClick={() => handleSort('tierId')}>Tier<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
               <TableHead><Button variant="ghost" onClick={() => handleSort('video_count')}>Video Count<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
               <TableHead><Button variant="ghost" onClick={() => handleSort('updated_at')}>Updated At<ArrowUpDown className="ml-2 h-4 w-4" /></Button></TableHead>
               <TableHead>Actions</TableHead>
@@ -134,11 +140,11 @@ export function ActressTable() {
           </TableHeader>
           <TableBody>
             {filteredActresses.map((actress) => (
-              <TableRow key={actress.id} className={cn(isOverloaded(actress.tier, actress.video_count) && 'bg-red-100 dark:bg-red-900')}>
+              <TableRow key={actress.id} className={cn(isOverloaded(actress.tierId, actress.video_count) && 'bg-red-100 dark:bg-red-900')}>
                 <TableCell>{actress.name}</TableCell>
                 <TableCell>{actress.status}</TableCell>
-                <TableCell>{actress.tier}</TableCell>
-                <TableCell className={cn(isOverloaded(actress.tier, actress.video_count) && 'text-red-500 font-bold')}>{actress.video_count}</TableCell>
+                <TableCell>{tierMap.get(actress.tierId)?.name ?? 'N/A'}</TableCell>
+                <TableCell className={cn(isOverloaded(actress.tierId, actress.video_count) && 'text-red-500 font-bold')}>{actress.video_count}</TableCell>
                 <TableCell>{new Date(actress.updated_at).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <Button variant="ghost" size="icon" onClick={() => { setSelectedActress(actress); setIsFormOpen(true); }}>

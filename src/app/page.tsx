@@ -1,8 +1,17 @@
 import { ActressTable } from '@/components/actress/ActressTable';
+import { ThemeToggle } from '@/components/theme-toggle';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+    <main className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-4">
+        <Link href="/tiers">
+          <Button variant="outline">Manage Tiers</Button>
+        </Link>
+        <ThemeToggle />
+      </div>
       <ActressTable />
     </main>
   );

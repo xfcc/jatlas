@@ -1,24 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Status, Tier } from "@prisma/client";
-
-const activeTiers = [Tier.Infinite, Tier.Premium, Tier.Impression];
-const retiredTiers = [Tier.Honor, Tier.Fame, Tier.Classic, Tier.Archive, Tier.Opus];
-
-function isValidTierForStatus(status: Status, tier: Tier): boolean {
-  if (status === Status.Active) {
-    return activeTiers.includes(tier);
-  }
-  if (status === Status.Retired) {
-    return retiredTiers.includes(tier);
-  }
-  return false;
-}
+import { Status } from "@prisma/client";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") as Status | null;
-  const tier = searchParams.get("tier") as Tier | null;
+  const tierId = searchParams.get("tierId");
   const sortBy = searchParams.get("sortBy") || 'updated_at';
   const order = searchParams.get("order") || 'desc';
 
@@ -26,15 +13,20 @@ export async function GET(request: Request) {
   if (status) {
     where.status = status;
   }
-  if (tier) {
-    where.tier = tier;
+  if (tierId) {
+    where.tierId = parseInt(tierId, 10);
+  }
+
+  let orderBy: any;
+  if (sortBy === 'tier') {
+    orderBy = { tier: { name: order } };
+  } else {
+    orderBy = { [sortBy]: order };
   }
 
   const actresses = await prisma.actress.findMany({
     where,
-    orderBy: {
-      [sortBy]: order,
-    },
+    orderBy,
   });
 
   return NextResponse.json(actresses);
@@ -42,14 +34,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { name, status, tier, video_count, external_id } = body;
+  const { name, status, tierId, video_count, external_id } = body;
 
-  if (!name || !status || !tier || video_count === undefined) {
+  if (!name || !status || !tierId || video_count === undefined) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
-
-  if (!isValidTierForStatus(status, tier)) {
-    return NextResponse.json({ error: "Invalid tier for the given status" }, { status: 400 });
   }
 
   try {
@@ -57,7 +45,7 @@ export async function POST(request: Request) {
       data: {
         name,
         status,
-        tier,
+        tierId,
         video_count,
         external_id,
       },

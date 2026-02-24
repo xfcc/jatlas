@@ -5,51 +5,54 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Actress, Status, Tier } from '@/types';
+import { type Actress, Status, type Tier as TierType } from '@/types';
 
 interface ActressFormProps {
   actress?: Actress;
   onSave: () => void;
 }
 
-const activeTiers = [Tier.Infinite, Tier.Premium, Tier.Impression];
-const retiredTiers = [Tier.Honor, Tier.Fame, Tier.Classic, Tier.Archive, Tier.Opus];
-
 export function ActressForm({ actress, onSave }: ActressFormProps) {
   const [name, setName] = useState('');
   const [status, setStatus] = useState<Status>(Status.Active);
-  const [tier, setTier] = useState<Tier>(Tier.Impression);
+  const [tierId, setTierId] = useState<number | undefined>(undefined);
   const [videoCount, setVideoCount] = useState(0);
   const [externalId, setExternalId] = useState('');
-  const [tierOptions, setTierOptions] = useState(activeTiers);
+  const [availableTiers, setAvailableTiers] = useState<TierType[]>([]);
+
+  useEffect(() => {
+    const fetchTiers = async () => {
+      const response = await fetch('/api/tiers');
+      const allTiers: TierType[] = await response.json();
+      const filteredTiers = allTiers.filter(t => t.status === status);
+      setAvailableTiers(filteredTiers);
+
+      if (actress) {
+        if (filteredTiers.some(t => t.id === actress.tierId)) {
+          setTierId(actress.tierId);
+        } else {
+          setTierId(filteredTiers[0]?.id);
+        }
+      } else {
+        setTierId(filteredTiers[0]?.id);
+      }
+    };
+
+    fetchTiers();
+  }, [status, actress]);
 
   useEffect(() => {
     if (actress) {
       setName(actress.name);
       setStatus(actress.status);
-      setTier(actress.tier);
+      setTierId(actress.tierId);
       setVideoCount(actress.video_count);
       setExternalId(actress.external_id || '');
     }
   }, [actress]);
 
-  useEffect(() => {
-    if (status === Status.Active) {
-      setTierOptions(activeTiers);
-      if (!activeTiers.includes(tier)) {
-        setTier(activeTiers[0]);
-      }
-    } else {
-      setTierOptions(retiredTiers);
-      if (!retiredTiers.includes(tier)) {
-        setTier(retiredTiers[0]);
-      }
-    }
-  }, [status, tier]);
-
   const handleSubmit = async () => {
-    const data = { name, status, tier, video_count: videoCount, external_id: externalId };
+    const data = { name, status, tierId, video_count: videoCount, external_id: externalId };
     const url = actress ? `/api/actresses/${actress.id}` : '/api/actresses';
     const method = actress ? 'PUT' : 'POST';
 
@@ -85,13 +88,13 @@ export function ActressForm({ actress, onSave }: ActressFormProps) {
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="tier" className="text-right">Tier</Label>
-        <Select onValueChange={(value) => setTier(value as Tier)} value={tier}>
+        <Select onValueChange={(value) => setTierId(Number(value))} value={tierId?.toString()}>
           <SelectTrigger className="col-span-3">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {tierOptions.map((t) => (
-              <SelectItem key={t} value={t}>{t}</SelectItem>
+            {availableTiers.map((t) => (
+              <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
