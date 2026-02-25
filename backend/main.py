@@ -21,10 +21,12 @@ DATABASE = "jatlas.db"
 class ActressCreate(BaseModel):
     name: str
     video_count: int = 0
+    tier_id: Optional[int] = None
 
 class ActressUpdate(BaseModel):
     name: Optional[str] = None
     video_count: Optional[int] = None
+    tier_id: Optional[int] = None
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -34,19 +36,43 @@ def get_db_connection():
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    # Enable foreign key support
+    cursor.execute("PRAGMA foreign_keys = ON")
+
+    # Create tier table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tier (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('现役', '引退'))
+        )
+    ''')
+
+    # Create actress table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS actress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
-            video_count INTEGER DEFAULT 0
+            video_count INTEGER DEFAULT 0,
+            tier_id INTEGER,
+            FOREIGN KEY (tier_id) REFERENCES tier (id)
         )
     ''')
     
-    # Check if data already exists
+    # Seed tiers
+    cursor.execute("SELECT COUNT(*) FROM tier")
+    if cursor.fetchone()[0] == 0:
+        tiers = [
+            ('Infinite', '现役'), ('Premium', '现役'), ('Impression', '现役'),
+            ('Honor', '引退'), ('Fame', '引退'), ('Classic', '引退'),
+            ('Archive', '引退'), ('Opus', '引退')
+        ]
+        cursor.executemany("INSERT INTO tier (name, status) VALUES (?, ?)", tiers)
+
+    # Seed actresses
     cursor.execute("SELECT COUNT(*) FROM actress")
-    count = cursor.fetchone()[0]
-    
-    if count == 0:
+    if cursor.fetchone()[0] == 0:
         initial_data = [
             ('楪カレン', 302),
             ('鷲尾芽衣', 259),
@@ -63,11 +89,25 @@ def init_db():
 def startup_event():
     init_db()
 
+@app.get("/api/tiers")
+def get_tiers():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, status FROM tier")
+    tiers = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in tiers]
+
 @app.get("/api/actresses")
 def get_actresses():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, video_count FROM actress ORDER BY video_count DESC")
+    cursor.execute('''
+        SELECT a.id, a.name, a.video_count, t.name as tier_name
+        FROM actress a
+        LEFT JOIN tier t ON a.tier_id = t.id
+        ORDER BY a.video_count DESC
+    ''')
     actresses = cursor.fetchall()
     conn.close()
     return [dict(row) for row in actresses]
@@ -87,8 +127,8 @@ def create_actress(actress: ActressCreate):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "INSERT INTO actress (name, video_count) VALUES (?, ?)",
-            (actress.name, actress.video_count)
+            "INSERT INTO actress (name, video_count, tier_id) VALUES (?, ?, ?)",
+            (actress.name, actress.video_count, actress.tier_id)
         )
         conn.commit()
         new_id = cursor.lastrowid
@@ -97,7 +137,7 @@ def create_actress(actress: ActressCreate):
         raise HTTPException(status_code=400, detail="Actress with this name already exists")
     finally:
         conn.close()
-    return {"id": new_id, "name": actress.name, "video_count": actress.video_count}
+    return {"id": new_id, **actress.dict()}
 
 @app.put("/api/actresses/{actress_id}")
 def update_actress(actress_id: int, actress: ActressUpdate):
@@ -115,7 +155,12 @@ def update_actress(actress_id: int, actress: ActressUpdate):
     cursor.execute(f"UPDATE actress SET {set_clause} WHERE id = ?", tuple(values))
     conn.commit()
     
-    cursor.execute("SELECT id, name, video_count FROM actress WHERE id = ?", (actress_id,))
+    cursor.execute('''
+        SELECT a.id, a.name, a.video_count, t.name as tier_name
+        FROM actress a
+        LEFT JOIN tier t ON a.tier_id = t.id
+        WHERE a.id = ?
+    ''', (actress_id,))
     updated_actress = cursor.fetchone()
     conn.close()
 
