@@ -28,6 +28,9 @@ class ActressUpdate(BaseModel):
     video_count: Optional[int] = None
     tier_id: Optional[int] = None
 
+class TierUpdate(BaseModel):
+    recommended_count: int
+
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
@@ -45,7 +48,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS tier (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
-            status TEXT NOT NULL CHECK(status IN ('现役', '引退'))
+            status TEXT NOT NULL CHECK(status IN ('现役', '引退')),
+            recommended_count INTEGER DEFAULT 10
         )
     ''')
 
@@ -64,25 +68,30 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM tier")
     if cursor.fetchone()[0] == 0:
         tiers = [
-            ('Infinite', '现役'), ('Premium', '现役'), ('Impression', '现役'),
-            ('Honor', '引退'), ('Fame', '引退'), ('Classic', '引退'),
-            ('Archive', '引退'), ('Opus', '引退')
+            ('Infinite', '现役', 10), ('Premium', '现役', 10), ('Impression', '现役', 10),
+            ('Honor', '引退', 10), ('Fame', '引退', 10), ('Classic', '引退', 10),
+            ('Archive', '引退', 10), ('Opus', '引退', 10)
         ]
-        cursor.executemany("INSERT INTO tier (name, status) VALUES (?, ?)", tiers)
+        cursor.executemany("INSERT INTO tier (name, status, recommended_count) VALUES (?, ?, ?)", tiers)
+        conn.commit() # Commit after seeding tiers
 
     # Seed actresses
     cursor.execute("SELECT COUNT(*) FROM actress")
     if cursor.fetchone()[0] == 0:
-        initial_data = [
-            ('楪カレン', 302),
-            ('鷲尾芽衣', 259),
-            ('明里つむぎ', 350),
-            ('藤森里穂', 272),
-            ('弥生みづき', 255)
-        ]
-        cursor.executemany("INSERT INTO actress (name, video_count) VALUES (?, ?)", initial_data)
+        cursor.execute("SELECT id FROM tier")
+        tier_ids = [row[0] for row in cursor.fetchall()]
+        if tier_ids:
+            import random
+            initial_data = [
+                ('楪カレン', 302, random.choice(tier_ids)),
+                ('鷲尾芽衣', 259, random.choice(tier_ids)),
+                ('明里つむぎ', 350, random.choice(tier_ids)),
+                ('藤森里穂', 272, random.choice(tier_ids)),
+                ('弥生みづき', 255, random.choice(tier_ids))
+            ]
+            cursor.executemany("INSERT INTO actress (name, video_count, tier_id) VALUES (?, ?, ?)", initial_data)
+            conn.commit() # Commit after seeding actresses
     
-    conn.commit()
     conn.close()
 
 @app.on_event("startup")
@@ -93,17 +102,30 @@ def startup_event():
 def get_tiers():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, status FROM tier")
+    cursor.execute("SELECT id, name, status, recommended_count FROM tier")
     tiers = cursor.fetchall()
     conn.close()
     return [dict(row) for row in tiers]
+
+
+@app.put("/api/tiers/{tier_id}")
+def update_tier(tier_id: int, tier: TierUpdate):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE tier SET recommended_count = ? WHERE id = ?",
+        (tier.recommended_count, tier_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"id": tier_id, "recommended_count": tier.recommended_count}
 
 @app.get("/api/actresses")
 def get_actresses():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT a.id, a.name, a.video_count, t.name as tier_name
+        SELECT a.id, a.name, a.video_count, t.name as tier_name, t.recommended_count as tier_recommended_count
         FROM actress a
         LEFT JOIN tier t ON a.tier_id = t.id
         ORDER BY a.video_count DESC
