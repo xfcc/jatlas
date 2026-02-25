@@ -1,7 +1,10 @@
-node_modules
-build
-dist
-.git
-.trae
-.log
-.figma
+# Ignore local development files
+.DS_Store
+*.db
+*.db-journal
+
+# Ignore Python virtual environment
+backend/venv/
+
+# Ignore Node.js dependencies
+frontend/node_modules/
