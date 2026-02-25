@@ -1,25 +1,22 @@
-import { PrismaClient, Status } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log(`Start seeding ...`);
 
-  const activeTiers = [
-    { name: 'Infinite', video_limit: null, status: Status.Active },
-    { name: 'Premium', video_limit: 50, status: Status.Active },
-    { name: 'Impression', video_limit: 12, status: Status.Active },
+  const tiersToSeed = [
+    { name: 'Infinite', video_limit: null },
+    { name: 'Premium', video_limit: 50 },
+    { name: 'Impression', video_limit: 12 },
+    { name: 'Honor', video_limit: null },
+    { name: 'Fame', video_limit: 50 },
+    { name: 'Classic', video_limit: 25 },
+    { name: 'Archive', video_limit: 12 },
+    { name: 'Opus', video_limit: 3 },
   ];
 
-  const retiredTiers = [
-    { name: 'Honor', video_limit: null, status: Status.Retired },
-    { name: 'Fame', video_limit: 50, status: Status.Retired },
-    { name: 'Classic', video_limit: 25, status: Status.Retired },
-    { name: 'Archive', video_limit: 12, status: Status.Retired },
-    { name: 'Opus', video_limit: 3, status: Status.Retired },
-  ];
-
-  for (const tierData of [...activeTiers, ...retiredTiers]) {
+  for (const tierData of tiersToSeed) {
     const tier = await prisma.tier.upsert({
       where: { name: tierData.name },
       update: {},
