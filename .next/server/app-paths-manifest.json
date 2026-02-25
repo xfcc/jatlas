@@ -1,7 +1,4 @@
 {
-  "/tiers/page": "app/tiers/page.js",
   "/page": "app/page.js",
-  "/api/actresses/route": "app/api/actresses/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/tiers/route": "app/api/tiers/route.js"
+  "/tiers/page": "app/tiers/page.js"
 }

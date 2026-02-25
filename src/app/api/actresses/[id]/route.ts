@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Status, Tier } from "@prisma/client";
 
 export async function GET(
   request: Request,
@@ -23,12 +22,12 @@ export async function PUT(
 ) {
   const id = parseInt(params.id, 10);
   const body = await request.json();
-  const { name, status, tierId, video_count, external_id } = body;
+  const { name, tierId, video_count, external_id } = body;
 
   try {
     const updatedActress = await prisma.actress.update({
       where: { id },
-      data: { name, status, tierId, video_count, external_id },
+      data: { name, tierId, video_count, external_id },
     });
     return NextResponse.json(updatedActress);
   } catch (error) {

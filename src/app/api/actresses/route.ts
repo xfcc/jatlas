@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Status } from "@prisma/client";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status") as Status | null;
   const tierId = searchParams.get("tierId");
   const sortBy = searchParams.get("sortBy") || 'updated_at';
   const order = searchParams.get("order") || 'desc';
 
   const where: any = {};
-  if (status) {
-    where.status = status;
-  }
   if (tierId) {
     where.tierId = parseInt(tierId, 10);
   }
@@ -34,9 +29,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { name, status, tierId, video_count, external_id } = body;
+  const { name, tierId, video_count, external_id } = body;
 
-  if (!name || !status || !tierId || video_count === undefined) {
+  if (!name || !tierId || video_count === undefined) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -44,7 +39,6 @@ export async function POST(request: Request) {
     const newActress = await prisma.actress.create({
       data: {
         name,
-        status,
         tierId,
         video_count,
         external_id,
