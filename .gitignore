@@ -33,3 +33,7 @@ yarn-error.log*
 
 # Database
 jatlas.db
+
+# Environment
+.env
+/src/generated/prisma
