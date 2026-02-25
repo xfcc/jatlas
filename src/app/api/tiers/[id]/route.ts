@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json();
-    const { name, video_limit, status } = body;
+    const { name, video_limit } = body;
 
     const processedLimit = (video_limit === null || video_limit === undefined || video_limit === '') 
       ? null 
@@ -33,7 +33,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       data: {
         name,
         video_limit: processedLimit,
-        status,
       },
     });
     return NextResponse.json(updatedTier);

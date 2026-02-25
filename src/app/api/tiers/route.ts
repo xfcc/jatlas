@@ -16,10 +16,10 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('[POST /api/tiers] Received body:', body);
 
-    const { name, video_limit, status } = body;
+    const { name, video_limit } = body;
 
-    if (!name || !status) {
-      return NextResponse.json({ error: "Missing required fields: name and status" }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: "Missing required fields: name" }, { status: 400 });
     }
 
     // Robust data processing
@@ -33,7 +33,6 @@ export async function POST(request: Request) {
 
     const dataToSave = {
       name,
-      status,
       video_limit: processedLimit,
     };
 

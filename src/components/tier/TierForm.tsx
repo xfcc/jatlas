@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Tier, Status } from '@/types';
+import { Tier } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,26 +22,14 @@ interface TierFormProps {
 export function TierForm({ tier, onClose }: TierFormProps) {
   const [name, setName] = useState('');
   const [videoLimit, setVideoLimit] = useState<number | string>('');
-  const [status, setStatus] = useState<Status>(Status.Active);
 
-  useEffect(() => {
-    if (tier) {
-      setName(tier.name);
-      setVideoLimit(tier.video_limit ?? '');
-      setStatus(tier.status);
-    } else {
-      setName('');
-      setVideoLimit('');
-      setStatus(Status.Active);
-    }
-  }, [tier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const body = { 
       name, 
-      video_limit: videoLimit === '' ? null : Number(videoLimit), 
-      status 
+      video_limit: videoLimit === '' ? null : Number(videoLimit)
+
     };
     const url = tier ? `/api/tiers/${tier.id}` : '/api/tiers';
     const method = tier ? 'PUT' : 'POST';
@@ -70,19 +58,7 @@ export function TierForm({ tier, onClose }: TierFormProps) {
               <Label htmlFor="video-limit" className="text-right">Video Limit</Label>
               <Input id="video-limit" type="number" value={videoLimit} onChange={(e) => setVideoLimit(e.target.value)} className="col-span-3" placeholder="Leave empty for unlimited" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">Status</Label>
-              <Select value={status} onValueChange={(value: Status) => setStatus(value)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(Status).map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
           </div>
           <DialogFooter>
             <DialogClose asChild>
