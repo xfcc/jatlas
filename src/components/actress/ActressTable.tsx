@@ -53,8 +53,13 @@ export function ActressTable({ actresses: initialActresses, tiers }: ActressTabl
     .sort((a, b) => {
         const aValue = a[sortBy as keyof OptimisticActress];
         const bValue = b[sortBy as keyof OptimisticActress];
+
+        // Handle null or undefined values by moving them to the end
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
         
         if (aValue === bValue) return 0;
+
         if (sortOrder === 'asc') {
             return aValue > bValue ? 1 : -1;
         } else {
