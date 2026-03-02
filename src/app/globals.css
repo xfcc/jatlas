@@ -57,3 +57,18 @@
     --chart-5: 340 75% 55%
   }
 }
+
+@layer components {
+  .landing-container {
+    @apply max-w-6xl px-6;
+  }
+  .hero-glow {
+    background: radial-gradient(ellipse 50% 40% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 80%);
+  }
+  .bento-card {
+    @apply bg-zinc-900/70 border border-zinc-800 rounded-2xl p-8 backdrop-blur-sm transition-colors hover:border-zinc-700;
+  }
+  .bento-tag {
+    @apply bg-zinc-800 text-zinc-300 px-3 py-1 rounded-md;
+  }
+}
