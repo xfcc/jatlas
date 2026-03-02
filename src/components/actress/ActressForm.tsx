@@ -5,40 +5,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { type Actress, type Tier as TierType } from '@/types';
+import { type Tier } from '@prisma/client';
+import { type OptimisticActress } from '@/hooks/useOptimisticActresses';
 
 interface ActressFormProps {
-  actress?: Actress;
+  actress?: OptimisticActress;
+  tiers: Tier[];
   onSave: () => void;
+  onCreate: (data: { name: string; video_count: number; tierId: number }) => Promise<void>;
+  onUpdate: (data: { id: number; video_count?: number; tierId?: number }) => Promise<void>;
 }
 
-export function ActressForm({ actress, onSave }: ActressFormProps) {
+export function ActressForm({ actress, tiers, onSave, onCreate, onUpdate }: ActressFormProps) {
   const [name, setName] = useState('');
-
   const [tierId, setTierId] = useState<number | undefined>(undefined);
   const [videoCount, setVideoCount] = useState(0);
   const [externalId, setExternalId] = useState('');
-  const [availableTiers, setAvailableTiers] = useState<TierType[]>([]);
-
-  useEffect(() => {
-    const fetchTiers = async () => {
-      const response = await fetch('/api/tiers');
-      const allTiers: TierType[] = await response.json();
-      setAvailableTiers(allTiers);
-
-      if (actress) {
-        if (allTiers.some(t => t.id === actress.tierId)) {
-          setTierId(actress.tierId);
-        } else {
-          setTierId(allTiers[0]?.id);
-        }
-      } else {
-        setTierId(allTiers[0]?.id);
-      }
-    };
-
-    fetchTiers();
-  }, [actress]);
 
   useEffect(() => {
     if (actress) {
@@ -46,26 +28,24 @@ export function ActressForm({ actress, onSave }: ActressFormProps) {
       setTierId(actress.tierId);
       setVideoCount(actress.video_count);
       setExternalId(actress.external_id || '');
+    } else {
+      // Set default tier when adding a new actress
+      if (tiers.length > 0) {
+        setTierId(tiers[0].id);
+      }
     }
-  }, [actress]);
+  }, [actress, tiers]);
 
   const handleSubmit = async () => {
-    const data = { name, tierId, video_count: videoCount, external_id: externalId };
-    const url = actress ? `/api/actresses/${actress.id}` : '/api/actresses';
-    const method = actress ? 'PUT' : 'POST';
-
-    const response = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-
-    if (response.ok) {
-      onSave();
+    if (actress) {
+      await onUpdate({ id: actress.id, video_count: videoCount, tierId });
+    } else {
+      await onCreate({ name, video_count: videoCount, tierId: tierId! });
     }
+    onSave();
   };
 
-  if (availableTiers.length === 0) {
+  if (tiers.length === 0) {
     return (
       <div className="text-center py-4">
         <p>No tiers available. Please create a tier before adding an actress.</p>
@@ -77,7 +57,7 @@ export function ActressForm({ actress, onSave }: ActressFormProps) {
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="name" className="text-right">Name</Label>
-        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+        <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" disabled={!!actress} />
       </div>
 
       <div className="grid grid-cols-4 items-center gap-4">
@@ -87,7 +67,7 @@ export function ActressForm({ actress, onSave }: ActressFormProps) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {availableTiers.map((t) => (
+            {tiers.map((t) => (
               <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
             ))}
           </SelectContent>

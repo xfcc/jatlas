@@ -1,18 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Tier } from '@/types';
+import { type Tier } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { createTier, updateTier } from '@/app/actions';
 
 interface TierFormProps {
   tier: Tier | null;
@@ -23,22 +17,25 @@ export function TierForm({ tier, onClose }: TierFormProps) {
   const [name, setName] = useState('');
   const [videoLimit, setVideoLimit] = useState<number | string>('');
 
+  useEffect(() => {
+    if (tier) {
+      setName(tier.name);
+      setVideoLimit(tier.video_limit ?? '');
+    } else {
+        setName('');
+        setVideoLimit('');
+    }
+  }, [tier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const body = { 
-      name, 
-      video_limit: videoLimit === '' ? null : Number(videoLimit)
+    const videoLimitValue = videoLimit === '' ? null : Number(videoLimit);
 
-    };
-    const url = tier ? `/api/tiers/${tier.id}` : '/api/tiers';
-    const method = tier ? 'PUT' : 'POST';
-
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    if (tier) {
+      await updateTier({ id: tier.id, name, video_limit: videoLimitValue });
+    } else {
+      await createTier({ name, video_limit: videoLimitValue });
+    }
     onClose();
   };
 

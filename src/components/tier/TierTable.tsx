@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Tier, Status } from '@/types';
+import { useState } from 'react';
+import { type Tier } from '@prisma/client';
 import { TierForm } from './TierForm';
 import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,26 +14,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { deleteTier } from '@/app/actions';
 
-export function TierTable() {
-  const [tiers, setTiers] = useState<Tier[]>([]);
+interface TierTableProps {
+  tiers: Tier[];
+}
+
+export function TierTable({ tiers }: TierTableProps) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
-
-  const fetchTiers = async () => {
-    const response = await fetch('/api/tiers');
-    const data = await response.json();
-    setTiers(data);
-  };
-
-  useEffect(() => {
-    fetchTiers();
-  }, []);
-
-  const handleAdd = () => {
-    setSelectedTier(null);
-    setIsFormOpen(true);
-  };
 
   const handleEdit = (tier: Tier) => {
     setSelectedTier(tier);
@@ -42,14 +31,12 @@ export function TierTable() {
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this tier?')) {
-      await fetch(`/api/tiers/${id}`, { method: 'DELETE' });
-      fetchTiers();
+      await deleteTier(id);
     }
   };
 
   const handleFormClose = () => {
     setIsFormOpen(false);
-    fetchTiers();
   };
 
   return (
@@ -78,7 +65,6 @@ export function TierTable() {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Video Limit</TableHead>
-            <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -87,7 +73,6 @@ export function TierTable() {
             <TableRow key={tier.id}>
               <TableCell>{tier.name}</TableCell>
               <TableCell>{tier.video_limit ?? 'N/A'}</TableCell>
-              <TableCell>{tier.status}</TableCell>
               <TableCell>
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(tier)}>
                   <Edit className="h-4 w-4" />
@@ -100,9 +85,6 @@ export function TierTable() {
           ))}
         </TableBody>
       </Table>
-      {isFormOpen && (
-        <TierForm tier={selectedTier} onClose={handleFormClose} />
-      )}
     </div>
   );
 }

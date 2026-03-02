@@ -1,49 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { type Actress, type Tier } from '@/types';
+import { type Tier } from '@prisma/client';
 import { ArrowUpDown, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ActressForm } from './ActressForm';
 import { cn } from '@/lib/utils';
+import { useOptimisticActresses, type OptimisticActress } from '@/hooks/useOptimisticActresses';
 
-export function ActressTable() {
-  const [actresses, setActresses] = useState<Actress[]>([]);
-  const [tiers, setTiers] = useState<Tier[]>([]);
+interface ActressTableProps {
+  actresses: OptimisticActress[];
+  tiers: Tier[];
+}
+
+export function ActressTable({ actresses: initialActresses, tiers }: ActressTableProps) {
+  const { optimisticActresses, handleCreateActress, handleUpdateActress, handleDeleteActress } = useOptimisticActresses(initialActresses);
 
   const [tierFilter, setTierFilter] = useState<string | 'all'>('all');
   const [sortBy, setSortBy] = useState('updated_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedActress, setSelectedActress] = useState<Actress | undefined>(undefined);
+  const [selectedActress, setSelectedActress] = useState<OptimisticActress | undefined>(undefined);
 
   const tierMap = new Map(tiers.map((t) => [t.id, t]));
-
-  const fetchActressesAndTiers = useCallback(async () => {
-    const tierPromise = fetch('/api/tiers').then(res => res.json());
-    
-    const actressParams = new URLSearchParams();
-
-    if (tierFilter !== 'all') actressParams.append('tierId', tierFilter);
-    actressParams.append('sortBy', sortBy);
-    actressParams.append('order', sortOrder);
-    const actressPromise = fetch(`/api/actresses?${actressParams.toString()}`).then(res => res.json());
-
-    const [tiersData, actressesData] = await Promise.all([tierPromise, actressPromise]);
-    setTiers(tiersData);
-    setActresses(actressesData);
-
-  }, [tierFilter, sortBy, sortOrder]);
-
-  useEffect(() => {
-    fetchActressesAndTiers();
-  }, [fetchActressesAndTiers]);
 
   const isOverloaded = (tierId: number, videoCount: number) => {
     const tier = tierMap.get(tierId);
@@ -60,21 +45,22 @@ export function ActressTable() {
     }
   };
   
-  const filteredActresses = actresses.filter(actress => 
-    actress.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSave = () => {
-    setIsFormOpen(false);
-    fetchActressesAndTiers();
-  };
-
-  const handleDelete = async (id: number) => {
-    const response = await fetch(`/api/actresses/${id}`, { method: 'DELETE' });
-    if (response.ok) {
-      fetchActressesAndTiers();
-    }
-  };
+  const sortedAndFilteredActresses = optimisticActresses
+    .filter(actress => 
+        (tierFilter === 'all' || actress.tierId === Number(tierFilter)) &&
+        actress.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+        const aValue = a[sortBy as keyof OptimisticActress];
+        const bValue = b[sortBy as keyof OptimisticActress];
+        
+        if (aValue === bValue) return 0;
+        if (sortOrder === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        } else {
+            return aValue < bValue ? 1 : -1;
+        }
+    });
 
   return (
     <div className="container mx-auto py-10">
@@ -112,7 +98,13 @@ export function ActressTable() {
                 {selectedActress ? 'Update the details of the actress.' : 'Add a new actress to your collection.'}
               </DialogDescription>
             </DialogHeader>
-            <ActressForm actress={selectedActress} onSave={handleSave} />
+            <ActressForm 
+              actress={selectedActress} 
+              tiers={tiers}
+              onSave={() => setIsFormOpen(false)}
+              onCreate={handleCreateActress}
+              onUpdate={handleUpdateActress} 
+            />
           </DialogContent>
         </Dialog>
       </div>
@@ -129,8 +121,8 @@ export function ActressTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredActresses.map((actress) => (
-              <TableRow key={actress.id} className={cn(isOverloaded(actress.tierId, actress.video_count) && 'bg-red-100 dark:bg-red-900')}>
+            {sortedAndFilteredActresses.map((actress) => (
+              <TableRow key={actress.id} className={cn(isOverloaded(actress.tierId, actress.video_count) && 'bg-red-100 dark:bg-red-900', actress.pending && 'opacity-50')}>
                 <TableCell>{actress.name}</TableCell>
 
                 <TableCell>{tierMap.get(actress.tierId)?.name ?? 'N/A'}</TableCell>
@@ -155,7 +147,7 @@ export function ActressTable() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(actress.id)}>Delete</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleDeleteActress(actress.id)}>Delete</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

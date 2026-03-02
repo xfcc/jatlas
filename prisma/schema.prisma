@@ -23,7 +23,7 @@ model Tier {
 
 model Actress {
   id          Int      @id @default(autoincrement())
-  name        String
+  name        String   @unique
 
   tier        Tier     @relation(fields: [tierId], references: [id])
   tierId      Int
