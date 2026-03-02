@@ -3,7 +3,7 @@
 import { useOptimistic } from 'react';
 import { type Actress, type Tier } from '@prisma/client';
 import { createActress, updateActress, deleteActress } from '@/app/actions';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 // Define a more specific type for our optimistic updates
 export type OptimisticActress = Actress & { pending?: boolean; tier?: Tier };
