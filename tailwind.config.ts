@@ -52,12 +52,25 @@ const config: Config = {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
+  			'base-zinc': 'hsl(var(--base-zinc))',
+  			'status-safe': 'hsl(var(--status-safe))',
+  			'status-warning': 'hsl(var(--status-warning))',
+  			'status-danger': 'hsl(var(--status-danger))',
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
+  			}
+  		},
+  		animation: {
+  			'fade-up': 'fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+  		},
+  		keyframes: {
+  			fadeUp: {
+  				'0%': { opacity: '0', transform: 'translateY(30px)' },
+  				'100%': { opacity: '1', transform: 'translateY(0)' }
   			}
   		}
   	}
