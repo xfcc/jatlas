@@ -2,6 +2,8 @@
 
 **你的私人数字资产风控大盘与天梯中枢**
 
+![J-ATLAS Screenshot](./J-ATLAS.png)
+
 ## 💡 为什么需要 JATLAS？ (The "Why")
 
 对于拥有近万部本地日本 AV 收藏的“仓鼠党”和“囤积癖”玩家而言，传统的“按物理硬盘+文件夹”分类管理模式必然走向系统熵增：
@@ -14,6 +16,8 @@
 ---
 
 ## 🎯 核心特性 (Core Features)
+
+![example.png](./example.png)
 
 ### 1. 动态水位与视觉风控 (Dynamic Quota Risk Control)
 摒弃静态记账，引入动态水位线。系统允许为每个分类设定“建议保存数量”，实时对冲当前的实际影片数，并通过全局 Design Tokens 驱动的红绿灯系统进行强视觉阻断：
