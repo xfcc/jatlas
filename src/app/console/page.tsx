@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getActresses, getTiers } from '@/app/actions';
 import { ActressTable } from '@/components/actress/ActressTable';
 import { TierTable } from '@/components/tier/TierTable';
