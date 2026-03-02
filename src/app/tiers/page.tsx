@@ -1,9 +1,12 @@
+import { getTiers } from '@/app/actions';
 import { TierTable } from '@/components/tier/TierTable';
 
-export default function TiersPage() {
+export default async function TiersPage() {
+  const tiers = await getTiers();
+
   return (
     <main className="container mx-auto py-10">
-      <TierTable />
+      <TierTable tiers={tiers} />
     </main>
   );
 }
