@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JATLAS Console - Screenshot Mockup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans SC', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Menlo', 'monospace'],
+                    },
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22', 
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #09090b; color: #fafafa; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+        .progress-danger-glow { box-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex overflow-hidden bg-zinc-950">
+
+    <aside class="w-64 bg-zinc-900/50 border-r border-zinc-800/50 flex-shrink-0 flex flex-col">
+        <div class="h-16 flex items-center px-6 border-b border-zinc-800/50">
+            <span class="text-lg font-black tracking-wider text-white flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                JATLAS
+            </span>
+        </div>
+        <nav class="flex-1 px-3 py-6 space-y-1">
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-white bg-zinc-800 rounded-lg group relative overflow-hidden">
+                <svg class="w-5 h-5 text-zinc-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                演员管理 (Actress)
+                <div class="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-r"></div>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-zinc-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                层级字典 (Tiers)
+            </a>
+             <a href="#" class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-lg transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                风控大盘 (Dashboard)
+            </a>
+        </nav>
+        <div class="p-4 border-t border-zinc-800/50">
+             <div class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-zinc-400 hover:text-white cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                系统设置 (Settings)
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-zinc-950 overflow-auto">
+        <header class="h-16 flex-shrink-0 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-10 px-8 flex items-center justify-between">
+            <div>
+                 <h1 class="text-xl font-semibold text-white tracking-tight">演员管理大盘 (Dashboard)</h1>
+                 <div class="text-xs text-zinc-500 font-mono mt-1">Total Records: 1,248 | Active Risks: 32</div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-zinc-400 flex items-center gap-1.5">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    PostgreSQL Connected
+                </span>
+                <button class="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-semibold px-4 py-2 rounded-md transition-colors shadow-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    新增记录 (New)
+                </button>
+            </div>
+        </header>
+
+        <div class="p-8 flex-1">
+            
+            <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="w-4 h-4 text-zinc-500 group-focus-within:text-zinc-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        </div>
+                        <input type="text" placeholder="按名称搜索... (Search)" class="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 block w-64 pl-10 p-2.5 placeholder-zinc-600 transition-all">
+                    </div>
+
+                    <select class="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all hover:border-zinc-700">
+                        <option value="">所有状态 (All Status)</option>
+                        <option value="active" selected>活跃 (Active)</option>
+                        <option value="retired">已引退 (Retired)</option>
+                    </select>
+
+                     <select class="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all hover:border-zinc-700">
+                        <option value="">所有层级 (All Tiers)</option>
+                        <option value="premium">Premium</option>
+                        <option value="classic">Classic</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 border-l border-zinc-800 pl-4">
+                     <button class="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors tooltip-trigger" title="Refresh Data">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                    <button class="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-zinc-900/30 border border-zinc-800/60 rounded-xl overflow-hidden backdrop-blur-sm">
+                <table class="w-full text-sm text-left text-zinc-400">
+                    <thead class="text-xs text-zinc-500 uppercase bg-zinc-900/80 border-b border-zinc-800/80">
+                        <tr>
+                            <th scope="col" class="px-6 py-4 font-medium tracking-wider">演员名称 (Name)</th>
+                            <th scope="col" class="px-6 py-4 font-medium tracking-wider">状态 (Status)</th>
+                            <th scope="col" class="px-6 py-4 font-medium tracking-wider">层级 (Tier)</th>
+                            <th scope="col" class="px-6 py-4 font-medium tracking-wider w-1/3">库存风险管理 (Inventory Risk)</th>
+                            <th scope="col" class="px-6 py-4 font-medium tracking-wider text-right">操作 (Action)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-800/50">
+                        
+                        <tr class="bg-zinc-900/20 hover:bg-zinc-900/60 transition-colors cursor-default group">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">三上</div>
+                                    <span class="text-zinc-200 font-medium font-sans text-[15px]">三上*** (Mikami***)</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950/50 text-emerald-400 border border-emerald-900/50">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                    活跃 (Active)
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex flex-col">
+                                    <span class="text-zinc-100 font-semibold">Premium</span>
+                                    <span class="text-xs text-zinc-500 font-mono mt-0.5">ID: T-001</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-center justify-between text-xs font-mono">
+                                        <span class="text-zinc-300"><span class="text-emerald-400 font-bold text-sm">85</span> / 120 (Limit)</span>
+                                        <span class="text-emerald-500 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                            Safe
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-zinc-800/80 rounded-full overflow-hidden">
+                                        <div class="h-full bg-emerald-500 rounded-full" style="width: 70%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="text-zinc-400 hover:text-blue-400 p-2 rounded hover:bg-zinc-800 transition-colors" title="编辑 (Edit)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button class="text-zinc-400 hover:text-red-500 p-2 rounded hover:bg-zinc-800 transition-colors" title="删除 (Delete)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr class="bg-zinc-900/20 hover:bg-zinc-900/60 transition-colors cursor-default group">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">明日</div>
+                                    <span class="text-zinc-200 font-medium font-sans text-[15px]">明日花*** (Asuka***)</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><path d="M3 3h2v2H3V3z"/></svg>
+                                    已引退 (Retired)
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex flex-col">
+                                    <span class="text-zinc-100 font-semibold">Classic</span>
+                                    <span class="text-xs text-zinc-500 font-mono mt-0.5">ID: T-004</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-center justify-between text-xs font-mono">
+                                        <span class="text-zinc-300"><span class="text-yellow-500 font-bold text-sm">105</span> / 100 (Limit)</span>
+                                        <span class="text-yellow-500 flex items-center gap-1">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                            Warning
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-zinc-800/80 rounded-full overflow-hidden relative">
+                                        <div class="h-full bg-yellow-500 rounded-full" style="width: 100%"></div>
+                                        <div class="absolute top-0 right-0 h-full w-1 bg-yellow-300 animate-pulse"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="text-zinc-400 hover:text-blue-400 p-2 rounded hover:bg-zinc-800 transition-colors" title="编辑 (Edit)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button class="text-zinc-400 hover:text-red-500 p-2 rounded hover:bg-zinc-800 transition-colors" title="删除 (Delete)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                         <tr class="bg-red-950/10 hover:bg-red-950/20 transition-colors cursor-default group border-l-2 border-red-600/50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">高桥</div>
+                                    <span class="text-zinc-200 font-medium font-sans text-[15px]">高橋*** (Takahashi***)</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950/50 text-emerald-400 border border-emerald-900/50">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                    活跃 (Active)
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex flex-col">
+                                    <span class="text-zinc-100 font-semibold">Impression</span>
+                                    <span class="text-xs text-zinc-500 font-mono mt-0.5">ID: T-003</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-center justify-between text-xs font-mono">
+                                        <span class="text-zinc-300"><span class="text-red-500 font-black text-lg">232</span> / 50 (Limit)</span>
+                                        <span class="text-red-500 flex items-center gap-1 font-bold animate-pulse">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                                            DANGER (Overload)
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-zinc-800/80 rounded-full overflow-hidden relative">
+                                        <div class="h-full bg-red-600 rounded-full progress-danger-glow" style="width: 100%"></div>
+                                    </div>
+                                    <div class="text-xs text-red-400 mt-0.5">
+                                        ※ 物理存储容量不足，请立即清理。(Storage Full)
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="text-zinc-400 hover:text-blue-400 p-2 rounded hover:bg-zinc-800 transition-colors" title="编辑 (Edit)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button class="text-red-500 hover:text-white p-2 rounded hover:bg-red-600/80 transition-colors" title="删除 (Delete)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr class="bg-zinc-900/20 hover:bg-zinc-900/60 transition-colors cursor-default group">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">河北</div>
+                                    <span class="text-zinc-200 font-medium font-sans text-[15px]">河北*** (Kawakita***)</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-950/50 text-emerald-400 border border-emerald-900/50">
+                                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                    活跃 (Active)
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex flex-col">
+                                    <span class="text-zinc-100 font-semibold">Infinite</span>
+                                    <span class="text-xs text-zinc-500 font-mono mt-0.5">ID: T-000</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex flex-col gap-2">
+                                    <div class="flex items-center justify-between text-xs font-mono">
+                                        <span class="text-zinc-300"><span class="text-emerald-400 font-bold text-sm">412</span> / ∞ (No Limit)</span>
+                                        <span class="text-zinc-500 flex items-center gap-1">
+                                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                            Safe
+                                        </span>
+                                    </div>
+                                    <div class="w-full h-2 bg-zinc-800/80 rounded-full overflow-hidden">
+                                        <div class="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-500 rounded-full" style="width: 20%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="text-zinc-400 hover:text-blue-400 p-2 rounded hover:bg-zinc-800 transition-colors" title="编辑 (Edit)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                    </button>
+                                    <button class="text-zinc-400 hover:text-red-500 p-2 rounded hover:bg-zinc-800 transition-colors" title="删除 (Delete)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                    </tbody>
+                </table>
+                <div class="bg-zinc-900/80 px-6 py-3 flex items-center justify-between border-t border-zinc-800/80 text-xs text-zinc-500">
+                    <div>Showing 1 to 4 of 1,248 entries</div>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1 bg-zinc-800 rounded hover:bg-zinc-700 disabled:opacity-50" disabled>Previous</button>
+                        <button class="px-3 py-1 bg-zinc-800 rounded hover:bg-zinc-700">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

@@ -9,11 +9,28 @@ export async function getTiers() {
   return prisma.tier.findMany();
 }
 
-export async function getActresses() {
+export async function getActresses(params?: { query?: string; status?: string; tierId?: string }) {
+    const { query, status, tierId } = params || {};
+    const where: any = {};
+
+    if (query) {
+        where.name = { contains: query, mode: 'insensitive' };
+    }
+    if (status) {
+        where.status = status;
+    }
+    if (tierId) {
+        where.tierId = parseInt(tierId, 10);
+    }
+
     return prisma.actress.findMany({
+        where,
         include: {
             tier: true,
         },
+        orderBy: {
+            id: 'asc',
+        }
     });
 }
 

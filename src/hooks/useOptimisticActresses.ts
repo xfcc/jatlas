@@ -42,6 +42,7 @@ export function useOptimisticActresses(actresses: OptimisticActress[]) {
       name: data.name,
       video_count: data.video_count,
       tierId: data.tierId,
+      status: 'active',
       external_id: null,
       created_at: new Date(),
       updated_at: new Date(),
