@@ -50,12 +50,11 @@ export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Ti
       tier,
     };
     setOptimisticActresses({ type: 'add', actress: newActress });
-    try {
-      await createActress(data);
-    } catch (error) {
+    const result = await createActress(data);
+    if (!result.success) {
       toast({
-        title: 'Error',
-        description: '数据同步失败，状态已回滚',
+        title: 'Action Failed',
+        description: result.message,
         variant: 'destructive',
       });
     }
@@ -63,12 +62,11 @@ export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Ti
 
   const handleUpdateActress = async (data: { id: number; video_count?: number; tierId?: number }) => {
     setOptimisticActresses({ type: 'update', actress: data });
-    try {
-      await updateActress(data);
-    } catch (error) {
+    const result = await updateActress(data);
+    if (!result.success) {
       toast({
-        title: 'Error',
-        description: '数据同步失败，状态已回滚',
+        title: 'Action Failed',
+        description: result.message,
         variant: 'destructive',
       });
     }
@@ -76,12 +74,11 @@ export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Ti
 
   const handleDeleteActress = async (id: number) => {
     setOptimisticActresses({ type: 'delete', id });
-    try {
-      await deleteActress(id);
-    } catch (error) {
+    const result = await deleteActress(id);
+    if (!result.success) {
       toast({
-        title: 'Error',
-        description: '数据同步失败，状态已回滚',
+        title: 'Action Failed',
+        description: result.message,
         variant: 'destructive',
       });
     }
