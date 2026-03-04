@@ -19,7 +19,7 @@ export default function LandingPage() {
       </nav>
 
       <main className="flex flex-col items-center justify-center pt-48 pb-32 px-4 opacity-0 animate-fade-up delay-100">
-        <div className="bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-xs px-4 py-1.5 rounded-full mb-8 tracking-wider backdrop-blur-sm select-none flex items-center gap-2">
+        <div className="bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-xs px-4 py-1.5 rounded-full mb-8 tracking-wider backdrop-blur-sm select-none flex items-center gap-2 font-mono">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
           V0.7 BUILD · SYSTEM ONLINE
         </div>

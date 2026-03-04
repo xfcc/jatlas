@@ -37,25 +37,25 @@
   }
 
   .dark {
-    --background: 0 0% 3.9%;
+    --background: 240 11.2% 4%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
+    --card: 240 11.2% 4%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
+    --popover: 240 6% 10%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
+    --primary-foreground: 240 6% 10%;
+    --secondary: 240 4% 15.9%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
+    --muted: 240 4% 15.9%;
+    --muted-foreground: 240 5.7% 64.3%;
+    --accent: 240 4% 15.9%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 0% 63.9%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 240 4% 15.9%;
+    --input: 240 4% 15.9%;
+    --ring: 240 5.7% 26.2%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -84,7 +84,7 @@
     @apply max-w-6xl px-6;
   }
   .bento-card {
-    @apply bg-zinc-900/70 border border-zinc-800 rounded-2xl p-8 backdrop-blur-sm transition-colors hover:border-zinc-700;
+    @apply bg-zinc-900/70 border border-zinc-800 rounded-xl p-8 backdrop-blur-sm transition-colors hover:border-zinc-700;
   }
   .bento-tag {
     @apply bg-zinc-800 text-zinc-300 px-3 py-1 rounded-md;

@@ -50,14 +50,14 @@ const FilterToolbar = ({ tiers }: { tiers: Tier[] }) => {
           <input
             type="text"
             placeholder="按名称搜索... (Search)"
-            className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 block w-64 pl-10 p-2.5 placeholder-zinc-600 transition-all"
+            className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 block w-64 pl-10 p-2.5 placeholder-zinc-600 transition-all duration-200"
             onChange={(e) => handleSearch(e.target.value)}
             defaultValue={searchParams.get('query')?.toString()}
           />
         </div>
 
         <select
-          className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all hover:border-zinc-700"
+          className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all duration-200 hover:border-zinc-700"
           onChange={(e) => handleStatusChange(e.target.value)}
           defaultValue={searchParams.get('status')?.toString()}
         >
@@ -67,7 +67,7 @@ const FilterToolbar = ({ tiers }: { tiers: Tier[] }) => {
         </select>
 
         <select
-          className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all hover:border-zinc-700"
+          className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all duration-200 hover:border-zinc-700"
           onChange={(e) => handleTierChange(e.target.value)}
           defaultValue={searchParams.get('tierId')?.toString()}
         >
@@ -81,10 +81,10 @@ const FilterToolbar = ({ tiers }: { tiers: Tier[] }) => {
       </div>
 
       <div className="flex items-center gap-2 border-l border-zinc-800 pl-4">
-        <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors tooltip-trigger" title="Refresh Data" onClick={() => replace(pathname)}>
+        <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200 tooltip-trigger" title="Refresh Data" onClick={() => replace(pathname)}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
         </button>
-        <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors">
+        <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
         </button>
       </div>

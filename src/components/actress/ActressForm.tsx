@@ -75,11 +75,11 @@ export function ActressForm({ actress, tiers, onSave, onCreate, onUpdate }: Actr
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="video-count" className="text-right">Video Count</Label>
-        <Input id="video-count" type="number" value={videoCount} onChange={(e) => setVideoCount(parseInt(e.target.value, 10))} className="col-span-3" />
+        <Input id="video-count" type="number" value={videoCount} onChange={(e) => setVideoCount(parseInt(e.target.value, 10))} className="col-span-3 font-mono" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="external-id" className="text-right">External ID</Label>
-        <Input id="external-id" value={externalId} onChange={(e) => setExternalId(e.target.value)} className="col-span-3" />
+        <Input id="external-id" value={externalId} onChange={(e) => setExternalId(e.target.value)} className="col-span-3 font-mono" />
       </div>
       <Button onClick={handleSubmit}>Save</Button>
     </div>

@@ -55,7 +55,7 @@ export function TierForm({ tier, onClose }: TierFormProps) {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="video-limit" className="text-right">Video Limit</Label>
-              <Input id="video-limit" type="number" value={videoLimit} onChange={(e) => setVideoLimit(e.target.value)} className="col-span-3" placeholder="Leave empty for unlimited" />
+              <Input id="video-limit" type="number" value={videoLimit} onChange={(e) => setVideoLimit(e.target.value)} className="col-span-3 font-mono" placeholder="Leave empty for unlimited" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="status" className="text-right">Status</Label>
