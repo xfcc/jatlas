@@ -1,10 +1,15 @@
-# Ignore local development files
-.DS_Store
+# Vercel Ignore
+
+# Standard build outputs and dependencies
+.next/
+node_modules/
+
+# Local development and environment files
+.env.local
+*.log
 *.db
 *.db-journal
+.DS_Store
 
-# Ignore Python virtual environment
-backend/venv/
-
-# Ignore Node.js dependencies
-frontend/node_modules/
+# Documentation (optional, but good practice)
+README.md
