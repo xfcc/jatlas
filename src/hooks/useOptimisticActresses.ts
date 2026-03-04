@@ -13,7 +13,7 @@ type Action =
   | { type: 'update'; actress: Partial<OptimisticActress> & { id: number } }
   | { type: 'delete'; id: number };
 
-export function useOptimisticActresses(actresses: OptimisticActress[]) {
+export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Tier[]) {
   const { toast } = useToast();
   const [optimisticActresses, setOptimisticActresses] = useOptimistic<OptimisticActress[], Action>(
     actresses,
@@ -37,16 +37,17 @@ export function useOptimisticActresses(actresses: OptimisticActress[]) {
   );
 
   const handleCreateActress = async (data: { name: string; video_count: number; tierId: number }) => {
+    const tier = tiers.find(t => t.id === data.tierId);
     const newActress: OptimisticActress = {
       id: Math.random(), // Temporary ID for the key
       name: data.name,
       video_count: data.video_count,
       tierId: data.tierId,
-      status: 'active',
       external_id: null,
       created_at: new Date(),
       updated_at: new Date(),
       pending: true,
+      tier,
     };
     setOptimisticActresses({ type: 'add', actress: newActress });
     try {

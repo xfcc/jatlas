@@ -17,7 +17,7 @@ export async function getActresses(params?: { query?: string; status?: string; t
         where.name = { contains: query, mode: 'insensitive' };
     }
     if (status) {
-        where.status = status;
+        where.tier = { status: status };
     }
     if (tierId) {
         where.tierId = parseInt(tierId, 10);
@@ -63,13 +63,13 @@ export async function deleteActress(id: number) {
     revalidatePath('/');
 }
 
-export async function createTier(data: { name: string; video_limit: number | null }) {
+export async function createTier(data: { name: string; video_limit: number | null, status: string }) {
     const newTier = await prisma.tier.create({ data });
     revalidatePath('/');
     return newTier;
 }
 
-export async function updateTier(data: { id: number; name?: string; video_limit?: number | null }) {
+export async function updateTier(data: { id: number; name?: string; video_limit?: number | null, status?: string }) {
     const { id, ...rest } = data;
     const updatedTier = await prisma.tier.update({
         where: { id },

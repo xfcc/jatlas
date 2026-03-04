@@ -65,6 +65,7 @@ export function TierTable({ tiers }: TierTableProps) {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Video Limit</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -73,6 +74,7 @@ export function TierTable({ tiers }: TierTableProps) {
             <TableRow key={tier.id}>
               <TableCell>{tier.name}</TableCell>
               <TableCell>{tier.video_limit ?? 'N/A'}</TableCell>
+              <TableCell>{tier.status === 'active' ? '现役' : '引退'}</TableCell>
               <TableCell>
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(tier)}>
                   <Edit className="h-4 w-4" />

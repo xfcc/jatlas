@@ -15,6 +15,7 @@ model Tier {
   id          Int       @id @default(autoincrement())
   name        String    @unique
   video_limit Int?
+  status      String    @default("active")
 
   actresses   Actress[]
   created_at  DateTime  @default(now())
@@ -24,7 +25,6 @@ model Tier {
 model Actress {
   id          Int      @id @default(autoincrement())
   name        String   @unique
-  status      String   @default("active")
 
   tier        Tier     @relation(fields: [tierId], references: [id])
   tierId      Int

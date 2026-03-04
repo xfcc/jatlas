@@ -17,7 +17,7 @@ interface ActressTableProps {
 }
 
 export function ActressTable({ actresses: initialActresses, tiers }: ActressTableProps) {
-  const { optimisticActresses, handleCreateActress, handleUpdateActress, handleDeleteActress } = useOptimisticActresses(initialActresses);
+  const { optimisticActresses, handleCreateActress, handleUpdateActress, handleDeleteActress } = useOptimisticActresses(initialActresses, tiers);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedActress, setSelectedActress] = useState<OptimisticActress | undefined>(undefined);
@@ -46,9 +46,9 @@ export function ActressTable({ actresses: initialActresses, tiers }: ActressTabl
                 </div>
               </TableCell>
               <TableCell className="px-6 py-4 whitespace-nowrap">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${actress.status === 'active' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-900/50' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
-                    {actress.status === 'active' ? <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg> : <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><path d="M3 3h2v2H3V3z"/></svg>}
-                    {actress.status === 'active' ? '活跃 (Active)' : '已引退 (Retired)'}
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${actress.tier?.status === 'active' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-900/50' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}`}>
+                    {actress.tier?.status === 'active' ? <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg> : <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 8 8"><path d="M3 3h2v2H3V3z"/></svg>}
+                    {actress.tier?.status === 'active' ? '现役女优' : '引退女优'}
                 </span>
               </TableCell>
               <TableCell className="px-6 py-4 whitespace-nowrap">
