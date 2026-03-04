@@ -1,7 +1,15 @@
-
 'use client';
 
+import { useConsole } from '@/app/console/ConsoleState';
+
 const Header = () => {
+  const { setIsFormOpen, setSelectedActress } = useConsole();
+
+  const handleNewClick = () => {
+    setSelectedActress(undefined);
+    setIsFormOpen(true);
+  };
+
   return (
     <header className="h-16 flex-shrink-0 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-10 px-8 flex items-center justify-between">
       <div>
@@ -16,9 +24,12 @@ const Header = () => {
           </span>
           PostgreSQL Connected
         </span>
-        <button className="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-semibold px-4 py-2 rounded-md transition-colors shadow-sm flex items-center gap-2">
+        <button 
+          className="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-semibold px-4 py-2 rounded-md transition-colors shadow-sm flex items-center gap-2"
+          onClick={handleNewClick}
+        >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-          新增记录 (New)
+          新增女优 (New)
         </button>
       </div>
     </header>

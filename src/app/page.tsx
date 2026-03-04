@@ -21,7 +21,7 @@ export default function LandingPage() {
       <main className="flex flex-col items-center justify-center pt-48 pb-32 px-4 opacity-0 animate-fade-up delay-100">
         <div className="bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-xs px-4 py-1.5 rounded-full mb-8 tracking-wider backdrop-blur-sm select-none flex items-center gap-2 font-mono">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          V0.7 BUILD · SYSTEM ONLINE
+          V1.0 BUILD · SYSTEM ONLINE
         </div>
         <h1 className="text-6xl md:text-8xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-zinc-600 text-center mb-6 drop-shadow-sm select-none leading-tight">
           私人 JAV 资产管理中枢
@@ -32,11 +32,11 @@ export default function LandingPage() {
         </p>
       </main>
 
-      <section className="max-w-5xl mx-auto px-6 py-24 border-y border-zinc-800/50 opacity-0 animate-fade-up delay-200">
+      <section className="max-w-5xl mx-auto px-6 py-24 border-y border-white/20 opacity-0 animate-fade-up delay-200">
         <h2 className="text-3xl md:text-5xl font-bold text-zinc-100 mb-8 tracking-tight">记忆是不可靠的介质。</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           <p className="text-zinc-400 leading-relaxed text-lg">
-            面对几百位女优和上万部本地 AV 资产，传统的“按物理硬盘+文件夹”分类管理模式必然走向系统熵增。你无法精准记住谁被分配在了哪个层级，更无法实时同步她们的生命周期。
+            面对近千位女优和上万部本地 AV 资产，传统的“按物理硬盘+文件夹”分类管理模式必然走向系统熵增。你无法精准记住谁被分配在了哪个层级，更无法实时同步她们的生命周期。
           </p>
           <p className="text-zinc-400 leading-relaxed text-lg">
             JATLAS 的诞生，就是用“数据库与规则引擎”对“人肉记忆”进行降维打击。用严密的层级字典取代感性偏好，将每一次下载行为纳入风控阈值。

@@ -29,7 +29,8 @@ model Actress {
   tier        Tier     @relation(fields: [tierId], references: [id])
   tierId      Int
   video_count Int
-  external_id String?  @unique
+  /// 演员ID
+  emby_id     String?  @unique
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }

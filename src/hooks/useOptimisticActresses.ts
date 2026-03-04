@@ -36,14 +36,14 @@ export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Ti
     }
   );
 
-  const handleCreateActress = async (data: { name: string; video_count: number; tierId: number }) => {
+  const handleCreateActress = async (data: { name: string; video_count: number; tierId: number; emby_id?: string }) => {
     const tier = tiers.find(t => t.id === data.tierId);
     const newActress: OptimisticActress = {
       id: Math.random(), // Temporary ID for the key
       name: data.name,
       video_count: data.video_count,
       tierId: data.tierId,
-      external_id: null,
+      emby_id: null,
       created_at: new Date(),
       updated_at: new Date(),
       pending: true,
@@ -60,7 +60,7 @@ export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Ti
     }
   };
 
-  const handleUpdateActress = async (data: { id: number; video_count?: number; tierId?: number }) => {
+  const handleUpdateActress = async (data: { id: number; video_count?: number; tierId?: number; emby_id?: string }) => {
     setOptimisticActresses({ type: 'update', actress: data });
     const result = await updateActress(data);
     if (!result.success) {

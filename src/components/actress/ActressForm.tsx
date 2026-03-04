@@ -12,22 +12,22 @@ interface ActressFormProps {
   actress?: OptimisticActress;
   tiers: Tier[];
   onSave: () => void;
-  onCreate: (data: { name: string; video_count: number; tierId: number }) => Promise<void>;
-  onUpdate: (data: { id: number; video_count?: number; tierId?: number }) => Promise<void>;
+  onCreate: (data: { name: string; video_count: number; tierId: number; emby_id?: string }) => Promise<void>;
+  onUpdate: (data: { id: number; video_count?: number; tierId?: number; emby_id?: string }) => Promise<void>;
 }
 
 export function ActressForm({ actress, tiers, onSave, onCreate, onUpdate }: ActressFormProps) {
   const [name, setName] = useState('');
   const [tierId, setTierId] = useState<number | undefined>(undefined);
   const [videoCount, setVideoCount] = useState(0);
-  const [externalId, setExternalId] = useState('');
+  const [emby_id, setEmbyId] = useState('');
 
   useEffect(() => {
     if (actress) {
       setName(actress.name);
       setTierId(actress.tierId);
       setVideoCount(actress.video_count);
-      setExternalId(actress.external_id || '');
+      setEmbyId(actress.emby_id || '');
     } else {
       // Set default tier when adding a new actress
       if (tiers.length > 0) {
@@ -38,9 +38,9 @@ export function ActressForm({ actress, tiers, onSave, onCreate, onUpdate }: Actr
 
   const handleSubmit = async () => {
     if (actress) {
-      await onUpdate({ id: actress.id, video_count: videoCount, tierId });
+      await onUpdate({ id: actress.id, video_count: videoCount, tierId, emby_id });
     } else {
-      await onCreate({ name, video_count: videoCount, tierId: tierId! });
+      await onCreate({ name, video_count: videoCount, tierId: tierId!, emby_id });
     }
     onSave();
   };
@@ -78,8 +78,8 @@ export function ActressForm({ actress, tiers, onSave, onCreate, onUpdate }: Actr
         <Input id="video-count" type="number" value={videoCount} onChange={(e) => setVideoCount(parseInt(e.target.value, 10))} className="col-span-3 font-mono" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="external-id" className="text-right">External ID</Label>
-        <Input id="external-id" value={externalId} onChange={(e) => setExternalId(e.target.value)} className="col-span-3 font-mono" />
+        <Label htmlFor="emby-id" className="text-right">演员ID</Label>
+        <Input id="emby-id" value={emby_id} onChange={(e) => setEmbyId(e.target.value)} className="col-span-3 font-mono" />
       </div>
       <Button onClick={handleSubmit}>Save</Button>
     </div>

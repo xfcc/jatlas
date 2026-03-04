@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/db';
+import { fetchActressCountFromEmby } from '@/lib/emby';
 
 export type State = {
     message?: string;
@@ -44,8 +45,14 @@ export async function getTiers() {
   return prisma.tier.findMany();
 }
 
-export async function getActresses(params?: { query?: string; status?: string; tierId?: string }) {
-    const { query, status, tierId } = params || {};
+export async function getActresses(params?: { 
+    query?: string; 
+    status?: string; 
+    tierId?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc'; 
+}) {
+    const { query, status, tierId, sortBy, sortOrder } = params || {};
     const where: any = {};
 
     if (query) {
@@ -58,18 +65,20 @@ export async function getActresses(params?: { query?: string; status?: string; t
         where.tierId = parseInt(tierId, 10);
     }
 
+    const orderBy: any = (sortBy && sortOrder) 
+        ? { [sortBy]: sortOrder } 
+        : { id: 'asc' };
+
     return prisma.actress.findMany({
         where,
         include: {
             tier: true,
         },
-        orderBy: {
-            id: 'asc',
-        }
+        orderBy
     });
 }
 
-export async function updateActress(data: { id: number; video_count?: number; tierId?: number }) {
+export async function updateActress(data: { id: number; video_count?: number; tierId?: number; emby_id?: string }) {
     const { id, ...rest } = data;
     try {
         const updatedActress = await prisma.actress.update({
@@ -87,7 +96,7 @@ export async function updateActress(data: { id: number; video_count?: number; ti
     }
 }
 
-export async function createActress(data: { name: string; video_count: number; tierId: number }) {
+export async function createActress(data: { name: string; video_count: number; tierId: number; emby_id?: string }) {
     try {
         const newActress = await prisma.actress.create({
             data,
@@ -147,5 +156,25 @@ export async function deleteTier(id: number) {
     } catch (error) {
         console.error('Failed to delete tier:', error);
         throw new Error('Tier deletion failed.');
+    }
+}
+
+export async function syncActressVideoCount(actressId: number, embyPersonId: string) {
+    try {
+        const newCount = await fetchActressCountFromEmby(embyPersonId);
+        const updatedActress = await prisma.actress.update({
+            where: { id: actressId },
+            data: { 
+                video_count: newCount,
+            },
+        });
+        revalidatePath('/console');
+        return { success: true, data: updatedActress };
+    } catch (error) {
+        console.error('Failed to sync actress video count:', error);
+        if (error instanceof Error) {
+            return { success: false, message: `对账失败: ${error.message}` };
+        }
+        return { success: false, message: '发生未知错误，对账失败。' };
     }
 }
