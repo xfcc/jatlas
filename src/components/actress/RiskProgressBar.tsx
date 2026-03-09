@@ -30,7 +30,7 @@ const RiskProgressBar = ({ video_count, recommended_count }: RiskProgressBarProp
   let status: 'Safe' | 'Warning' | 'Danger';
   if (ratio > 1.2) {
     status = 'Danger';
-  } else if (ratio >= 0.9) {
+  } else if (ratio > 1.0) {
     status = 'Warning';
   } else {
     status = 'Safe';

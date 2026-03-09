@@ -58,7 +58,7 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-col space-y-3 font-mono text-sm">
               <div className="flex items-center gap-3 text-green-400"><div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>Safe: 容量健康</div>
-              <div className="flex items-center gap-3 text-yellow-400"><div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.8)]"></div>Warning: {"<"}10% 超载</div>
+              <div className="flex items-center gap-3 text-yellow-400"><div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.8)]"></div>Warning: 20% 以内超载</div>
               <div className="flex items-center gap-3 text-red-400"><div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>Danger: 强制断舍离</div>
             </div>
           </div>
