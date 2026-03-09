@@ -4,3 +4,4 @@
 .DS_Store
 trace
 node_modules
+backups/
