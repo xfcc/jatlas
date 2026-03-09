@@ -3,3 +3,4 @@
 .env.production
 .DS_Store
 trace
+node_modules
