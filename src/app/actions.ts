@@ -266,7 +266,7 @@ export async function listDatabaseBackups() {
       .filter(file => file.endsWith('.sql'))
       .map(file => {
         const match = file.match(/(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
-        const createdAt = match ? new Date(match[0].replace('T', ' ')).toISOString() : new Date().toISOString();
+        const createdAt = match ? new Date(match[0].slice(0, 11) + match[0].slice(11).replace(/-/g, ':')).toISOString() : new Date().toISOString();
         return {
           name: file,
           createdAt,
@@ -286,15 +286,20 @@ export async function backupDatabase() {
     const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
     const backupFileName = `backup-${timestamp}.sql`;
     const backupFilePath = path.join(backupDir, backupFileName);
-    const pgDumpPath = process.env.PG_DUMP_PATH || 'pg_dump';
-    const command = `${pgDumpPath} "${process.env.DATABASE_URL}" > "${backupFilePath}"`;
+    const pgDumpPath = '/Applications/Postgres.app/Contents/Versions/18/bin/pg_dump';
+    const dbUrl = process.env.DATABASE_URL?.split('?')[0];
+      const command = `${pgDumpPath} "${dbUrl}" > "${backupFilePath}"`;
 
     await execAsync(command);
 
     return { success: true, message: `成功创建备份 ${backupFileName}` };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to backup database:', error);
-    return { success: false, message: '数据库备份失败。' };
+    // Log the detailed error message from the command
+    if (error.stderr) {
+      console.error('pg_dump stderr:', error.stderr);
+    }
+    return { success: false, message: `数据库备份失败: ${error.stderr || error.message}` };
   }
 }
 
@@ -305,8 +310,9 @@ export async function restoreDatabase(fileName: string) {
     // First, create a new backup before restoring
     await backupDatabase();
 
-    const psqlPath = process.env.PSQL_PATH || 'psql';
-    const command = `${psqlPath} "${process.env.DATABASE_URL}" < "${backupFilePath}"`;
+    const psqlPath = '/Applications/Postgres.app/Contents/Versions/18/bin/psql';
+      const dbUrl = process.env.DATABASE_URL?.split('?')[0];
+      const command = `${psqlPath} "${dbUrl}" < "${backupFilePath}"`;
     await execAsync(command);
     
     revalidatePath('/');
