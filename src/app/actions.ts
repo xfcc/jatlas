@@ -5,6 +5,13 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/db';
 import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '@/lib/emby';
+import { exec } from 'child_process';
+import fs from 'fs/promises';
+import path from 'path';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+const backupDir = path.join(process.cwd(), 'backups');
 
 export type State = {
     message?: string;
@@ -64,8 +71,10 @@ export async function getActresses(params?: {
     tierId?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc'; 
+    page?: number;
+    pageSize?: number;
 }) {
-    const { query, status, tierId, sortBy, sortOrder } = params || {};
+    const { query, status, tierId, sortBy, sortOrder, page = 1, pageSize = 20 } = params || {};
     const where: any = {};
 
     if (query) {
@@ -82,13 +91,18 @@ export async function getActresses(params?: {
         ? { [sortBy]: sortOrder } 
         : { id: 'asc' };
 
-    return prisma.actress.findMany({
+    const total = await prisma.actress.count({ where });
+    const actresses = await prisma.actress.findMany({
         where,
         include: {
             tier: true,
         },
-        orderBy
+        orderBy,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
     });
+
+    return { data: actresses, total };
 }
 
 export async function updateActress(data: { id: number; video_count?: number; tierId?: number; emby_id?: string[] }) {
@@ -239,6 +253,64 @@ export async function syncActressVideoCount(actressId: number, embyPersonIds: st
         if (error instanceof Error) {
             return { success: false, message: `对账失败: ${error.message}` };
         }
+
         return { success: false, message: '发生未知错误，对账失败。' };
     }
+}
+
+export async function listDatabaseBackups() {
+  try {
+    await fs.mkdir(backupDir, { recursive: true });
+    const files = await fs.readdir(backupDir);
+    const backups = files
+      .filter(file => file.endsWith('.sql'))
+      .map(file => {
+        const match = file.match(/(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/);
+        const createdAt = match ? new Date(match[0].replace('T', ' ')).toISOString() : new Date().toISOString();
+        return {
+          name: file,
+          createdAt,
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return { success: true, data: backups };
+  } catch (error) {
+    console.error('Failed to list database backups:', error);
+    return { success: false, message: '无法列出数据库备份。' };
+  }
+}
+
+export async function backupDatabase() {
+  try {
+    await fs.mkdir(backupDir, { recursive: true });
+    const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
+    const backupFileName = `backup-${timestamp}.sql`;
+    const backupFilePath = path.join(backupDir, backupFileName);
+    const command = `pg_dump ${process.env.DATABASE_URL} > ${backupFilePath}`;
+
+    await execAsync(command);
+
+    return { success: true, message: `成功创建备份 ${backupFileName}` };
+  } catch (error) {
+    console.error('Failed to backup database:', error);
+    return { success: false, message: '数据库备份失败。' };
+  }
+}
+
+export async function restoreDatabase(fileName: string) {
+  const backupFilePath = path.join(backupDir, fileName);
+
+  try {
+    // First, create a new backup before restoring
+    await backupDatabase();
+
+    const command = `psql ${process.env.DATABASE_URL} < ${backupFilePath}`;
+    await execAsync(command);
+    
+    revalidatePath('/');
+    return { success: true, message: `成功从 ${fileName} 恢复数据库。` };
+  } catch (error) {
+    console.error('Failed to restore database:', error);
+    return { success: false, message: '数据库恢复失败。' };
+  }
 }

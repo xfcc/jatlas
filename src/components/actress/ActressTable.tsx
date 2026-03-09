@@ -17,12 +17,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useConsole } from '@/app/console/ConsoleState';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+import { Button } from '@/components/ui/button';
+
 interface ActressTableProps {
   actresses: OptimisticActress[];
   tiers: Tier[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
-export function ActressTable({ actresses: initialActresses, tiers }: ActressTableProps) {
+export function ActressTable({ actresses: initialActresses, tiers, total, page, pageSize }: ActressTableProps) {
   const { optimisticActresses, handleCreateActress, handleUpdateActress, handleDeleteActress } = useOptimisticActresses(initialActresses, tiers);
   const { toast } = useToast();
   const { isFormOpen, setIsFormOpen, selectedActress, setSelectedActress, isBatchFormOpen, setIsBatchFormOpen } = useConsole();
@@ -249,6 +254,7 @@ export function ActressTable({ actresses: initialActresses, tiers }: ActressTabl
             }
           </TableBody>
         </Table>
+        <Pagination total={total} page={page} pageSize={pageSize} />
          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
@@ -284,5 +290,52 @@ export function ActressTable({ actresses: initialActresses, tiers }: ActressTabl
           </Dialog>
       </div>
     </TooltipProvider>
+  );
+}
+
+function Pagination({ total, page, pageSize }: { total: number; page: number; pageSize: number; }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { replace } = useRouter();
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('page', newPage.toString());
+    replace(`${pathname}?${params.toString()}`);
+  };
+
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center justify-between p-4">
+      <span className="text-sm text-zinc-400">
+        共 {total} 条记录
+      </span>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handlePageChange(page - 1)}
+          disabled={page === 1}
+        >
+          上一页
+        </Button>
+        <span className="text-sm text-zinc-400">
+          {page} / {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handlePageChange(page + 1)}
+          disabled={page === totalPages}
+        >
+          下一页
+        </Button>
+      </div>
+    </div>
   );
 }
