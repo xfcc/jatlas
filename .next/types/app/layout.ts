@@ -1,4 +1,4 @@
-// File: /Users/xfcc/Documents/trae_projects/JATLAS/src/app/layout.tsx
+// File: /Users/xfcc/Desktop/Work/0. Career/projects/JATLAS/src/app/layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -6,7 +6,7 @@ import { createActress, updateActress, deleteActress } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
 // Define a more specific type for our optimistic updates
-export type OptimisticActress = Actress & { pending?: boolean; tier?: Tier };
+export type OptimisticActress = Omit<Actress, 'emby_id'> & { emby_id: string[]; pending?: boolean; tier?: Tier };
 
 type Action =
   | { type: 'add'; actress: OptimisticActress }
@@ -36,40 +36,26 @@ export function useOptimisticActresses(actresses: OptimisticActress[], tiers: Ti
     }
   );
 
-  const handleCreateActress = async (data: { name: string; video_count: number; tierId: number; emby_id?: string }) => {
+  const handleCreateActress = async (data: { name: string; video_count: number; tierId: number; emby_id?: string[] }) => {
     const tier = tiers.find(t => t.id === data.tierId);
     const newActress: OptimisticActress = {
       id: Math.random(), // Temporary ID for the key
       name: data.name,
       video_count: data.video_count,
       tierId: data.tierId,
-      emby_id: null,
+      emby_id: data.emby_id || [],
       created_at: new Date(),
       updated_at: new Date(),
       pending: true,
       tier,
     };
     setOptimisticActresses({ type: 'add', actress: newActress });
-    const result = await createActress(data);
-    if (!result.success) {
-      toast({
-        title: 'Action Failed',
-        description: result.message,
-        variant: 'destructive',
-      });
-    }
+    await createActress(data);
   };
 
-  const handleUpdateActress = async (data: { id: number; video_count?: number; tierId?: number; emby_id?: string }) => {
+  const handleUpdateActress = async (data: { id: number; video_count?: number; tierId?: number; emby_id?: string[] }) => {
     setOptimisticActresses({ type: 'update', actress: data });
-    const result = await updateActress(data);
-    if (!result.success) {
-      toast({
-        title: 'Action Failed',
-        description: result.message,
-        variant: 'destructive',
-      });
-    }
+    await updateActress(data);
   };
 
   const handleDeleteActress = async (id: number) => {

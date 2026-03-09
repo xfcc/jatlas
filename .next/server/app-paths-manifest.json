@@ -1,4 +1,4 @@
 {
-  "/console/page": "app/console/page.js",
-  "/console/tiers/page": "app/console/tiers/page.js"
+  "/page": "app/page.js",
+  "/console/page": "app/console/page.js"
 }

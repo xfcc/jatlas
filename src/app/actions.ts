@@ -4,12 +4,25 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/db';
-import { fetchActressCountFromEmby } from '@/lib/emby';
+import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '@/lib/emby';
 
 export type State = {
     message?: string;
     success: boolean,
   } | undefined;
+
+export async function getEmbyIdsByName(actressName: string) {
+    try {
+        const ids = await fetchEmbyIdsByName(actressName);
+        return { success: true, data: ids };
+    } catch (error) {
+        console.error('Failed to fetch emby ids by name:', error);
+        if (error instanceof Error) {
+            return { success: false, message: error.message };
+        }
+        return { success: false, message: '按姓名获取 Emby ID 失败。' };
+    }
+}
 
 export async function authenticate(
     prevState: State,
@@ -78,12 +91,15 @@ export async function getActresses(params?: {
     });
 }
 
-export async function updateActress(data: { id: number; video_count?: number; tierId?: number; emby_id?: string }) {
-    const { id, ...rest } = data;
+export async function updateActress(data: { id: number; video_count?: number; tierId?: number; emby_id?: string[] }) {
+    const { id, emby_id, ...rest } = data;
     try {
         const updatedActress = await prisma.actress.update({
             where: { id },
-            data: rest,
+            data: {
+                ...rest,
+                emby_id: emby_id ? { set: emby_id } : undefined,
+            },
             include: {
                 tier: true,
             },
@@ -96,10 +112,13 @@ export async function updateActress(data: { id: number; video_count?: number; ti
     }
 }
 
-export async function createActress(data: { name: string; video_count: number; tierId: number; emby_id?: string }) {
+export async function createActress(data: { name: string; video_count: number; tierId: number; emby_id?: string[] }) {
     try {
         const newActress = await prisma.actress.create({
-            data,
+            data: {
+                ...data,
+                emby_id: data.emby_id ?? [],
+            },
             include: {
                 tier: true,
             },
@@ -120,6 +139,51 @@ export async function deleteActress(id: number) {
     } catch (error) {
         console.error('Failed to delete actress:', error);
         return { success: false, message: '删除失败，请检查相关依赖。' };
+    }
+}
+
+export async function batchCreateActresses(data: { tierId: number; names: string }) {
+    const { tierId, names } = data;
+
+    const nameList = names.split('\n').map(name => name.trim()).filter(Boolean);
+    if (nameList.length === 0) {
+        return { success: false, message: '姓名列表不能为空。' };
+    }
+
+    try {
+        const existingActresses = await prisma.actress.findMany({
+            where: {
+                name: { in: nameList },
+            },
+        });
+
+        const existingNames = new Set(existingActresses.map(a => a.name));
+        const newNames = nameList.filter(name => !existingNames.has(name));
+
+        if (newNames.length > 0) {
+            await prisma.actress.createMany({
+                data: newNames.map(name => ({
+                    name,
+                    tierId,
+                    video_count: 0,
+                    emby_id: [],
+                })),
+            });
+        }
+
+        revalidatePath('/');
+        
+        return {
+            success: true,
+            data: {
+                createdCount: newNames.length,
+                skippedCount: existingNames.size,
+                skippedNames: Array.from(existingNames),
+            },
+        };
+    } catch (error) {
+        console.error('Failed to batch create actresses:', error);
+        return { success: false, message: '批量创建失败，数据库发生错误。' };
     }
 }
 
@@ -159,9 +223,9 @@ export async function deleteTier(id: number) {
     }
 }
 
-export async function syncActressVideoCount(actressId: number, embyPersonId: string) {
+export async function syncActressVideoCount(actressId: number, embyPersonIds: string[]) {
     try {
-        const newCount = await fetchActressCountFromEmby(embyPersonId);
+        const newCount = await fetchActressCountFromEmby(embyPersonIds);
         const updatedActress = await prisma.actress.update({
             where: { id: actressId },
             data: { 

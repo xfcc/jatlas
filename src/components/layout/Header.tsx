@@ -1,20 +1,25 @@
 'use client';
 
 import { useConsole } from '@/app/console/ConsoleState';
+import { Plus } from 'lucide-react';
 
 const Header = () => {
-  const { setIsFormOpen, setSelectedActress } = useConsole();
+  const { setIsFormOpen, setSelectedActress, setIsBatchFormOpen } = useConsole();
 
   const handleNewClick = () => {
     setSelectedActress(undefined);
     setIsFormOpen(true);
   };
 
+  const handleBatchNewClick = () => {
+    setIsBatchFormOpen(true);
+  };
+
   return (
     <header className="h-16 flex-shrink-0 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-10 px-8 flex items-center justify-between">
       <div>
         <h1 className="text-xl font-semibold text-white tracking-tight">演员管理大盘 (Dashboard)</h1>
-        <div className="text-xs text-zinc-500 font-mono mt-1">Total Records: 1,248 | Active Risks: 32</div>
+        {/* <div className="text-xs text-zinc-500 font-mono mt-1">Total Records: 1,248 | Active Risks: 32</div> */}
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-zinc-400 flex items-center gap-1.5">
@@ -25,11 +30,18 @@ const Header = () => {
           PostgreSQL Connected
         </span>
         <button 
+          className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-semibold px-4 py-2 rounded-md transition-colors shadow-sm flex items-center gap-2"
+          onClick={handleBatchNewClick}
+        >
+          <Plus className="w-4 h-4" />
+          批量新增
+        </button>
+        <button 
           className="bg-zinc-100 hover:bg-white text-zinc-950 text-sm font-semibold px-4 py-2 rounded-md transition-colors shadow-sm flex items-center gap-2"
           onClick={handleNewClick}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-          新增女优 (New)
+          <Plus className="w-4 h-4" />
+          新增女优
         </button>
       </div>
     </header>
