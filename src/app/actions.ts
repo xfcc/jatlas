@@ -286,7 +286,8 @@ export async function backupDatabase() {
     const timestamp = new Date().toISOString().replace(/:/g, '-').slice(0, 19);
     const backupFileName = `backup-${timestamp}.sql`;
     const backupFilePath = path.join(backupDir, backupFileName);
-    const command = `pg_dump ${process.env.DATABASE_URL} > ${backupFilePath}`;
+    const pgDumpPath = process.env.PG_DUMP_PATH || 'pg_dump';
+    const command = `${pgDumpPath} "${process.env.DATABASE_URL}" > "${backupFilePath}"`;
 
     await execAsync(command);
 
@@ -304,7 +305,8 @@ export async function restoreDatabase(fileName: string) {
     // First, create a new backup before restoring
     await backupDatabase();
 
-    const command = `psql ${process.env.DATABASE_URL} < ${backupFilePath}`;
+    const psqlPath = process.env.PSQL_PATH || 'psql';
+    const command = `${psqlPath} "${process.env.DATABASE_URL}" < "${backupFilePath}"`;
     await execAsync(command);
     
     revalidatePath('/');
@@ -314,3 +316,16 @@ export async function restoreDatabase(fileName: string) {
     return { success: false, message: '数据库恢复失败。' };
   }
 }
+
+export async function deleteDatabaseBackup(fileName: string) {
+  const backupFilePath = path.join(backupDir, fileName);
+
+  try {
+    await fs.unlink(backupFilePath);
+    return { success: true, message: `成功删除备份 ${fileName}` };
+  } catch (error) {
+    console.error('Failed to delete database backup:', error);
+    return { success: false, message: '数据库备份删除失败。' };
+  }
+}
+

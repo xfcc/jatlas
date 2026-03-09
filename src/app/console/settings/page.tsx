@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { listDatabaseBackups, backupDatabase, restoreDatabase } from '@/app/actions';
+import { listDatabaseBackups, backupDatabase, restoreDatabase, deleteDatabaseBackup } from '@/app/actions';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface BackupFile {
@@ -25,6 +25,18 @@ export default function SettingsPage() {
     const result = await listDatabaseBackups();
     if (result.success && result.data) {
       setBackups(result.data);
+    }
+    setIsLoading(false);
+  };
+
+  const handleDelete = async (fileName: string) => {
+    setIsLoading(true);
+    const result = await deleteDatabaseBackup(fileName);
+    if (result.success) {
+      toast({ title: '成功', description: result.message });
+      fetchBackups();
+    } else {
+      toast({ title: '错误', description: result.message, variant: 'destructive' });
     }
     setIsLoading(false);
   };
@@ -92,23 +104,42 @@ export default function SettingsPage() {
                   {new Date(backup.createdAt).toLocaleString()}
                 </p>
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" disabled={isLoading}>恢复</Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>确认恢复数据库？</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      此操作将使用此备份覆盖当前数据库。为安全起见，在恢复前会自动创建一个新的备份。确定要继续吗？
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleRestore(backup.name)}>恢复</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <div className="flex gap-2">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={isLoading}>恢复</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>确认恢复数据库？</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        此操作将使用此备份覆盖当前数据库。为安全起见，在恢复前会自动创建一个新的备份。确定要继续吗？
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleRestore(backup.name)}>恢复</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isLoading}>删除</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>确认删除备份？</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        此操作将永久删除该备份文件，无法撤销。确定要继续吗？
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(backup.name)}>删除</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </li>
           ))}
         </ul>

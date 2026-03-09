@@ -17,7 +17,7 @@ describe('Emby Fetcher', () => {
       json: async () => mockApiResponse,
     });
 
-    const count = await fetchActressCountFromEmby(embyPersonId);
+    const count = await fetchActressCountFromEmby([embyPersonId]);
 
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining(`/emby/Items?Recursive=true&IncludeItemTypes=Movie%2CVideo&PersonIds=${embyPersonId}`)
@@ -33,7 +33,7 @@ describe('Emby Fetcher', () => {
       statusText: 'Internal Server Error',
     });
 
-    const count = await fetchActressCountFromEmby(embyPersonId);
+    const count = await fetchActressCountFromEmby([embyPersonId]);
 
     expect(count).toBe(0);
   });
@@ -46,7 +46,7 @@ describe('Emby Fetcher', () => {
       json: async () => { throw new Error('Invalid JSON'); },
     });
 
-    const count = await fetchActressCountFromEmby(embyPersonId);
+    const count = await fetchActressCountFromEmby([embyPersonId]);
 
     expect(count).toBe(0);
   });
