@@ -19,7 +19,7 @@ const Header = () => {
     <header className="h-16 flex-shrink-0 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-10 px-8 flex items-center justify-between">
       <div>
         <h1 className="text-xl font-semibold text-white tracking-tight">演员管理大盘 (Dashboard)</h1>
-        {/* <div className="text-xs text-zinc-500 font-mono mt-1">Total Records: 1,248 | Active Risks: 32</div> */}
+
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-zinc-400 flex items-center gap-1.5">

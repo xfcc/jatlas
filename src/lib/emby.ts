@@ -1,3 +1,7 @@
+interface EmbyPerson {
+  Id: string;
+}
+
 export async function fetchActressCountFromEmby(embyPersonIds: string[]): Promise<number> {
   if (embyPersonIds.length === 0) {
     return 0;
@@ -60,7 +64,7 @@ export async function fetchEmbyIdsByName(actressName: string): Promise<string[]>
       const data = await response.json();
       // Assuming the response is an array of persons under the "Items" key
       if (data.Items && Array.isArray(data.Items)) {
-        return data.Items.map((person: any) => person.Id);
+        return data.Items.map((person: EmbyPerson) => person.Id);
       }
       return [];
     } catch (error) {

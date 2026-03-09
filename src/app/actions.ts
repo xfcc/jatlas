@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '@/lib/emby';
 import { exec } from 'child_process';
 import fs from 'fs/promises';
@@ -75,7 +76,7 @@ export async function getActresses(params?: {
     pageSize?: number;
 }) {
     const { query, status, tierId, sortBy, sortOrder, page = 1, pageSize = 20 } = params || {};
-    const where: any = {};
+    const where: Prisma.ActressWhereInput = {};
 
     if (query) {
         where.name = { contains: query, mode: 'insensitive' };
@@ -87,7 +88,7 @@ export async function getActresses(params?: {
         where.tierId = parseInt(tierId, 10);
     }
 
-    const orderBy: any = (sortBy && sortOrder) 
+    const orderBy: Prisma.ActressOrderByWithRelationInput = (sortBy && sortOrder) 
         ? { [sortBy]: sortOrder } 
         : { id: 'asc' };
 
@@ -293,13 +294,21 @@ export async function backupDatabase() {
     await execAsync(command);
 
     return { success: true, message: `成功创建备份 ${backupFileName}` };
-  } catch (error: any) {
+  } catch (error) {
     console.error('Failed to backup database:', error);
     // Log the detailed error message from the command
-    if (error.stderr) {
-      console.error('pg_dump stderr:', error.stderr);
+    let stderrMessage = '';
+    if (error && typeof error === 'object' && 'stderr' in error) {
+      stderrMessage = (error as { stderr: string }).stderr;
+      console.error('pg_dump stderr:', stderrMessage);
     }
-    return { success: false, message: `数据库备份失败: ${error.stderr || error.message}` };
+    
+    let errorMessage = '';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+
+    return { success: false, message: `数据库备份失败: ${stderrMessage || errorMessage}` };
   }
 }
 
