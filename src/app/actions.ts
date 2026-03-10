@@ -379,7 +379,7 @@ export async function syncActressVideoCount(actressId: number, embyPersonIds: st
 
         // Step 2: 调用 Emby 接口，获取最新的影片计数
         const uniqueEmbyPersonIds = Array.from(new Set(embyPersonIds));
-        const newCount = await fetchActressCountFromEmby(uniqueEmbyPersonIds[0] ? [uniqueEmbyPersonIds[0]] : []);
+        const newCount = await fetchActressCountFromEmby(uniqueEmbyPersonIds);
 
         // Step 3: 计算差值，只有当库存变化时才继续
         const videoDelta = newCount - actressBeforeSync.video_count;

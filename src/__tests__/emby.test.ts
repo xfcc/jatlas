@@ -3,6 +3,8 @@ import { fetchActressCountFromEmby } from '@/lib/emby';
 describe('Emby Fetcher', () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+    process.env.EMBY_SERVER_URL = 'http://fake-emby-server:8096';
+    process.env.EMBY_API_KEY = 'fake-api-key';
   });
 
   it('should fetch and return actress count from Emby', async () => {
