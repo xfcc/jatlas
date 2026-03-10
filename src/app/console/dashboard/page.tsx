@@ -1,8 +1,12 @@
-import { getDashboardStats } from "@/lib/dashboard";
+import { getAssetLogs, getDashboardStats } from "@/lib/dashboard";
 import Link from "next/link";
+import { LogChart } from "./_components/log-chart";
 
 export default async function DashboardPage() {
-  const stats = await getDashboardStats();
+    const [stats, assetLogs] = await Promise.all([
+    getDashboardStats(),
+    getAssetLogs(),
+  ]);
 
   const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
 
@@ -119,14 +123,7 @@ export default async function DashboardPage() {
 
       <div className="space-y-5 pt-4 pb-12">
         <h3 className="text-sm font-semibold text-zinc-500 uppercase tracking-widest">系统流水记录 (近 6 个月)</h3>
-        <div className="bg-zinc-900/50 border border-zinc-800/80 rounded-2xl p-8 h-64 flex flex-col justify-center items-center border-dashed">
-          <div className="text-zinc-500 mb-3 font-medium">基建待接轨：此处将由 Recharts 渲染时间轴折线图</div>
-          <div className="text-sm text-zinc-600 flex gap-6">
-            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-zinc-400"></div>收录图谱扩张趋势</span>
-            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500/50"></div>资产入库流水</span>
-            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500/50"></div>资产出库流水</span>
-          </div>
-        </div>
+        <LogChart data={assetLogs} />
       </div>
     </div>
   );

@@ -1,6 +1,61 @@
 
 import prisma from '@/lib/db';
 
+export async function getAssetLogs() {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const logs = await prisma.assetLog.findMany({
+    where: {
+      created_at: {
+        gte: sixMonthsAgo,
+      },
+    },
+    orderBy: {
+      created_at: 'asc',
+    },
+  });
+
+  const data: { name: string; '资产入库': number; '资产出库': number; '收录扩张': number }[] = [];
+  const monthMap: { [key: string]: typeof data[0] } = {};
+
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const monthName = d.toLocaleString('zh-CN', { month: 'short' });
+    const year = d.getFullYear();
+    const key = `${monthName} ${year}`;
+    if (!monthMap[key]) {
+      const newEntry = { name: monthName.replace('月', ''), '资产入库': 0, '资产出库': 0, '收录扩张': 0 };
+      monthMap[key] = newEntry;
+      data.push(newEntry);
+    }
+  }
+
+  logs.forEach((log: { created_at: Date; action_type: 'CREATE' | 'UPDATE' | 'DELETE'; video_delta: number }) => {
+    const monthName = log.created_at.toLocaleString('zh-CN', { month: 'short' });
+    const year = log.created_at.getFullYear();
+    const key = `${monthName} ${year}`;
+    const entry = monthMap[key];
+
+    if (entry) {
+      if (log.action_type === 'CREATE') {
+        entry['收录扩张'] += 1;
+      } else if (log.action_type === 'UPDATE') {
+        if (log.video_delta > 0) {
+          entry['资产入库'] += log.video_delta;
+        } else {
+          entry['资产出库'] += Math.abs(log.video_delta);
+        }
+      }
+    }
+  });
+
+  return data;
+}
+
 export async function getDashboardStats() {
     const actresses = await prisma.actress.findMany({
         select: {
