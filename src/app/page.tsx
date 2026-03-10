@@ -50,7 +50,6 @@ export default function LandingPage() {
           <p className="text-zinc-400 text-lg max-w-2xl mx-auto">三大核心逻辑，为你重塑仓储秩序，直击“仓鼠党”与“囤积癖”的痛点。</p>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-          {/* Card A: Visual Risk Control */}
           <div className="bg-zinc-900/30 border border-zinc-800/60 p-8 rounded-3xl hover:border-zinc-700/80 transition-colors backdrop-blur-md">
             <h3 className="text-2xl font-bold text-zinc-100 mb-4">视觉风控</h3>
             <p className="text-zinc-400/90 leading-relaxed mb-6 text-base">
@@ -63,7 +62,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Card B: Millisecond-level Mutations */}
           <div className="bg-zinc-900/30 border border-zinc-800/60 p-8 rounded-3xl hover:border-zinc-700/80 transition-colors backdrop-blur-md">
             <h3 className="text-2xl font-bold text-zinc-100 mb-4">毫秒级突变</h3>
             <p className="text-zinc-400/90 leading-relaxed mb-6 text-base">
@@ -75,7 +73,6 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Card C: Dual-track Ladder */}
           <div className="bg-zinc-900/30 border border-zinc-800/60 p-8 rounded-3xl hover:border-zinc-700/80 transition-colors backdrop-blur-md">
             <h3 className="text-2xl font-bold text-zinc-100 mb-4">双轨天梯</h3>
             <p className="text-zinc-400/90 leading-relaxed text-base">

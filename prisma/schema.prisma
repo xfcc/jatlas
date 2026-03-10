@@ -34,3 +34,19 @@ model Actress {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }
+
+enum AssetActionType {
+  CREATE
+  DELETE
+  UPDATE
+}
+
+model AssetLog {
+  id           Int             @id @default(autoincrement())
+  actress_id   Int
+  actress_name String
+  action_type  AssetActionType
+  video_delta  Int
+  created_at   DateTime        @default(now())
+  updated_at   DateTime        @updatedAt
+}

@@ -71,7 +71,7 @@ export async function authenticate(
     }
     
     // Step 4: 重定向至后台主控台
-    redirect('/console');
+    redirect('/console/dashboard');
   }
 
 
@@ -133,20 +133,44 @@ export async function getActresses(params?: {
  * 【业务意图】数据更新：修改指定女优的核心档案信息，如作品数、评级或 Emby ID。
  */
 export async function updateActress(data: { id: number; video_count?: number; tierId?: number; emby_id?: string[] }) {
-    const { id, emby_id, ...rest } = data;
+    const { id, video_count, ...rest } = data;
     try {
-        // Step 1: 执行数据库更新操作
+        // Step 1: 获取更新前的女优状态，用于计算 delta
+        const actressBeforeUpdate = await prisma.actress.findUnique({ where: { id } });
+        if (!actressBeforeUpdate) {
+            return { success: false, message: '女优不存在，无法更新。' };
+        }
+
+        // Step 2: 执行数据库更新操作
         const updatedActress = await prisma.actress.update({
             where: { id },
             data: {
                 ...rest,
-                emby_id: emby_id ? { set: emby_id } : undefined,
+                video_count,
+                emby_id: data.emby_id ? { set: data.emby_id } : undefined,
             },
             include: {
                 tier: true,
             },
         });
-        // Step 2: 使前端缓存失效，强制刷新页面数据
+
+        // Step 3: 计算 video_count 的差值
+        if (video_count !== undefined) {
+            const videoDelta = video_count - actressBeforeUpdate.video_count;
+            // 仅在 video_count 发生实际变动时，才记录日志
+            if (videoDelta !== 0) {
+                await prisma.assetLog.create({
+                    data: {
+                        actress_id: id,
+                        actress_name: updatedActress.name,
+                        action_type: 'UPDATE',
+                        video_delta: videoDelta,
+                    },
+                });
+            }
+        }
+
+        // Step 4: 使前端缓存失效，强制刷新页面数据
         revalidatePath('/');
         return { success: true, data: updatedActress };
     } catch (error) {
@@ -171,7 +195,18 @@ export async function createActress(data: { name: string; video_count: number; t
                 tier: true,
             },
         });
-        // Step 2: 使前端缓存失效，强制刷新页面数据
+
+        // Step 2: 记录资产入库日志
+        await prisma.assetLog.create({
+            data: {
+                actress_id: newActress.id,
+                actress_name: newActress.name,
+                action_type: 'CREATE',
+                video_delta: newActress.video_count,
+            },
+        });
+
+        // Step 3: 使前端缓存失效，强制刷新页面数据
         revalidatePath('/');
         return { success: true, data: newActress };
     } catch (error) {
@@ -186,9 +221,26 @@ export async function createActress(data: { name: string; video_count: number; t
  */
 export async function deleteActress(id: number) {
     try {
-        // Step 1: 执行数据库删除操作
+        // Step 1: 在删除前，先查询女优信息，特别是 video_count
+        const actressToDelete = await prisma.actress.findUnique({ where: { id } });
+        if (!actressToDelete) {
+            return { success: false, message: '女优不存在，无法删除。' };
+        }
+
+        // Step 2: 执行数据库删除操作
         await prisma.actress.delete({ where: { id } });
-        // Step 2: 使前端缓存失效，强制刷新页面数据
+
+        // Step 3: 记录资产出库日志
+        await prisma.assetLog.create({
+            data: {
+                actress_id: id,
+                actress_name: actressToDelete.name,
+                action_type: 'DELETE',
+                video_delta: -actressToDelete.video_count, // 出库，所以是负数
+            },
+        });
+
+        // Step 4: 使前端缓存失效，强制刷新页面数据
         revalidatePath('/');
         return { success: true };
     } catch (error) {
@@ -224,14 +276,24 @@ export async function batchCreateActresses(data: { tierId: number; names: string
 
         // Step 4: 对新姓名执行批量创建
         if (newNames.length > 0) {
-            await prisma.actress.createMany({
-                data: newNames.map(name => ({
-                    name,
-                    tierId,
-                    video_count: 0,
-                    emby_id: [],
-                })),
-            });
+            const createData = newNames.map(name => ({
+                name,
+                tierId,
+                video_count: 0, // 批量创建默认为0
+                emby_id: [],
+            }));
+            await prisma.actress.createMany({ data: createData });
+
+            // Step 4.1: 批量创建的女优，暂时无法获取她们的 ID，所以日志记录简化
+            // 注意：这里我们无法获取 createMany 插入后的 ID 列表，所以日志记录会有些不精确
+            // 这是一个 Prisma 的局限。在业务上，批量入库的 video_delta 都是 0，影响不大。
+            const logData = newNames.map(name => ({
+                actress_id: 0, // 无法知道具体 ID，用 0 占位
+                actress_name: name,
+                action_type: 'CREATE' as const,
+                video_delta: 0,
+            }));
+            await prisma.assetLog.createMany({ data: logData });
         }
 
         // Step 5: 使前端缓存失效，并返回本次操作的详细报告
@@ -303,16 +365,39 @@ export async function deleteTier(id: number) {
  */
 export async function syncActressVideoCount(actressId: number, embyPersonIds: string[]) {
     try {
-        // Step 1: 调用 Emby 接口，获取最新的影片计数
+        // Step 1: 获取对账前的女优状态
+        const actressBeforeSync = await prisma.actress.findUnique({ where: { id: actressId } });
+        if (!actressBeforeSync) {
+            return { success: false, message: '女优不存在，无法对账。' };
+        }
+
+        // Step 2: 调用 Emby 接口，获取最新的影片计数
         const newCount = await fetchActressCountFromEmby(embyPersonIds);
-        // Step 2: 将新计数值覆写到数据库
+
+        // Step 3: 计算差值，只有当库存变化时才继续
+        const videoDelta = newCount - actressBeforeSync.video_count;
+        if (videoDelta === 0) {
+            // 如果库存无变化，可以选择直接返回成功，避免不必要的数据库写入
+            return { success: true, data: actressBeforeSync, message: '库存无变化，无需同步。' };
+        }
+
+        // Step 4: 将新计数值覆写到数据库
         const updatedActress = await prisma.actress.update({
             where: { id: actressId },
-            data: { 
-                video_count: newCount,
+            data: { video_count: newCount },
+        });
+
+        // Step 5: 记录资产对账日志
+        await prisma.assetLog.create({
+            data: {
+                actress_id: actressId,
+                actress_name: updatedActress.name,
+                action_type: 'UPDATE', // 对账本质是更新
+                video_delta: videoDelta,
             },
         });
-        // Step 3: 使后台主控台缓存失效
+
+        // Step 6: 使后台主控台缓存失效
         revalidatePath('/console');
         return { success: true, data: updatedActress };
     } catch (error) {
