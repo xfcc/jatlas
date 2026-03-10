@@ -21,31 +21,48 @@ export async function POST(request: Request) {
     let successful_count = 0;
     for (let i = 0; i < actressIds.length; i++) {
       const actressId = parseInt(actressIds[i], 10);
-      
       try {
-        const actress = await prisma.actress.findUnique({
-          where: { id: actressId },
-        });
+        const actress = await prisma.actress.findUnique({ where: { id: actressId } });
 
-        if (actress && (!actress.emby_id || actress.emby_id.length === 0)) {
-          const fakeEmbyId = `emby-${Math.random().toString(36).substr(2, 9)}`;
-          const updatedEmbyIds = actress.emby_id ? [...actress.emby_id, fakeEmbyId] : [fakeEmbyId];
-
-          await prisma.actress.update({
-            where: { id: actressId },
-            data: { emby_id: updatedEmbyIds },
-          });
-          successful_count++;
+        if (actress) {
+          if (!actress.emby_id || actress.emby_id.length === 0) {
+            const fakeEmbyId = `emby-${Math.random().toString(36).substr(2, 9)}`;
+            await prisma.actress.update({
+              where: { id: actressId },
+              data: { emby_id: [fakeEmbyId] },
+            });
+            successful_count++;
+            tasks.set(taskId, { 
+                progress: i + 1, 
+                total: actressIds.length, 
+                status: `processing (${successful_count} successful)`,
+                lastProcessedItem: { name: actress.name, result: 'success', detail: `成功绑定新 ID: ${fakeEmbyId}` }
+            });
+          } else {
+            tasks.set(taskId, { 
+                progress: i + 1, 
+                total: actressIds.length, 
+                status: `processing (${successful_count} successful)`,
+                lastProcessedItem: { name: actress.name, result: 'skipped', detail: '已存在 Emby ID，已跳过' }
+            });
+          }
+        } else {
+            tasks.set(taskId, { 
+                progress: i + 1, 
+                total: actressIds.length, 
+                status: `processing (${successful_count} successful)`,
+                lastProcessedItem: { name: `ID: ${actressId}`, result: 'error', detail: '演员不存在' }
+            });
         }
       } catch (e) {
         console.error(`Failed to process actress ${actressId}`, e);
+        tasks.set(taskId, { 
+            progress: i + 1, 
+            total: actressIds.length, 
+            status: `processing (${successful_count} successful)`,
+            lastProcessedItem: { name: `ID: ${actressId}`, result: 'error', detail: '数据库操作失败' }
+        });
       }
-      
-      tasks.set(taskId, { 
-          progress: i + 1, 
-          total: actressIds.length, 
-          status: `processing (${successful_count} successful)` 
-      });
     }
     tasks.set(taskId, { 
         progress: actressIds.length, 

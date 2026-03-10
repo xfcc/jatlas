@@ -153,6 +153,7 @@ export async function updateActress(data: { id: number; video_count?: number; ti
                 ...rest,
                 video_count,
                 emby_id: data.emby_id ? { set: data.emby_id } : undefined,
+                updated_at: new Date(), // 无论数据是否变化，都强制更新时间戳
             },
             include: {
                 tier: true,
@@ -377,19 +378,27 @@ export async function syncActressVideoCount(actressId: number, embyPersonIds: st
         }
 
         // Step 2: 调用 Emby 接口，获取最新的影片计数
-        const newCount = await fetchActressCountFromEmby(embyPersonIds);
+        const uniqueEmbyPersonIds = Array.from(new Set(embyPersonIds));
+        const newCount = await fetchActressCountFromEmby(uniqueEmbyPersonIds[0] ? [uniqueEmbyPersonIds[0]] : []);
 
         // Step 3: 计算差值，只有当库存变化时才继续
         const videoDelta = newCount - actressBeforeSync.video_count;
         if (videoDelta === 0) {
-            // 如果库存无变化，可以选择直接返回成功，避免不必要的数据库写入
-            return { success: true, data: actressBeforeSync, message: '库存无变化，无需同步。' };
+            // 如果库存无变化，也更新时间戳
+            const updatedActress = await prisma.actress.update({
+                where: { id: actressId },
+                data: { updated_at: new Date() },
+                include: { tier: true },
+            });
+            revalidatePath('/console');
+            return { success: true, data: updatedActress, message: '库存无变化，已刷新更新时间。' };
         }
 
         // Step 4: 将新计数值覆写到数据库
         const updatedActress = await prisma.actress.update({
             where: { id: actressId },
             data: { video_count: newCount },
+            include: { tier: true },
         });
 
         // Step 5: 记录资产对账日志

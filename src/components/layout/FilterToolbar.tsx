@@ -57,15 +57,19 @@ const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: numbe
         const task = await response.json();
 
         if (response.ok) {
+          const description = task.lastProcessedItem
+            ? `${task.lastProcessedItem.result === 'success' ? '✅' : task.lastProcessedItem.result === 'skipped' ? '⏭️' : '❌'} [${task.lastProcessedItem.name}] - ${task.lastProcessedItem.detail}`
+            : '正在准备任务，请稍候...';
+
           update({ 
             id: toastId,
             title: `正在获取 Emby ID... (${task.progress}/${task.total})`,
-            description: `当前状态: ${task.status}`
+            description: description
           });
 
-          if (task.status === 'completed') {
+          if (task.status.startsWith('completed')) {
             clearInterval(interval);
-            update({ id: toastId, title: '成功', description: 'Emby ID 获取任务已完成。' });
+            update({ id: toastId, title: '成功', description: `Emby ID 获取任务已完成。${task.status}` });
           }
         } else {
           clearInterval(interval);
@@ -95,15 +99,19 @@ const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: numbe
         const task = await response.json();
 
         if (response.ok) {
+          const description = task.lastProcessedItem
+            ? `${task.lastProcessedItem.result === 'success' ? '✅' : task.lastProcessedItem.result === 'skipped' ? '⏭️' : '❌'} [${task.lastProcessedItem.name}] - ${task.lastProcessedItem.detail}`
+            : '正在准备任务，请稍候...';
+
           update({ 
             id: toastId,
             title: `正在更新影片数量... (${task.progress}/${task.total})`,
-            description: `当前状态: ${task.status}`
+            description: description
           });
 
-          if (task.status === 'completed') {
+          if (task.status.startsWith('completed')) {
             clearInterval(interval);
-            update({ id: toastId, title: '成功', description: '影片数量更新任务已完成。' });
+            update({ id: toastId, title: '成功', description: `影片数量更新任务已完成。${task.status}` });
           }
         } else {
           clearInterval(interval);
