@@ -58,17 +58,18 @@ const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: numbe
 
         if (response.ok) {
           update({ 
+            id: toastId,
             title: `正在获取 Emby ID... (${task.progress}/${task.total})`,
             description: `当前状态: ${task.status}`
           });
 
           if (task.status === 'completed') {
             clearInterval(interval);
-            update({ title: '成功', description: 'Emby ID 获取任务已完成。' });
+            update({ id: toastId, title: '成功', description: 'Emby ID 获取任务已完成。' });
           }
         } else {
           clearInterval(interval);
-          update({ title: '错误', description: task.error, variant: 'destructive' });
+          update({ id: toastId, title: '错误', description: task.error, variant: 'destructive' });
         }
       }, 2000);
 
@@ -95,17 +96,18 @@ const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: numbe
 
         if (response.ok) {
           update({ 
+            id: toastId,
             title: `正在更新影片数量... (${task.progress}/${task.total})`,
             description: `当前状态: ${task.status}`
           });
 
           if (task.status === 'completed') {
             clearInterval(interval);
-            update({ title: '成功', description: '影片数量更新任务已完成。' });
+            update({ id: toastId, title: '成功', description: '影片数量更新任务已完成。' });
           }
         } else {
           clearInterval(interval);
-          update({ title: '错误', description: task.error, variant: 'destructive' });
+          update({ id: toastId, title: '错误', description: task.error, variant: 'destructive' });
         }
       }, 2000);
 
