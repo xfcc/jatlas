@@ -1,7 +1,9 @@
+'use client';
 
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import ConsoleState from './ConsoleState';
+import { Toaster } from '@/components/ui/toaster';
 
 export default function ConsoleLayout({
   children,
@@ -18,6 +20,7 @@ export default function ConsoleLayout({
               {children}
           </div>
         </main>
+        <Toaster />
       </div>
     </ConsoleState>
   );

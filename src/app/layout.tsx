@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/toaster";
+
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +22,7 @@ export default function RootLayout({
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--radial-gradient-start),var(--radial-gradient-end))]"></div>
         <div className="absolute inset-0 -z-20 bg-grid-zinc [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
         {children}
-        <Toaster />
+
       </body>
     </html>
   );

@@ -4,8 +4,10 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Tier } from '@prisma/client';
 import { useDebouncedCallback } from 'use-debounce';
+import { toast } from '@/hooks/use-toast';
+import { syncEmbyIds, syncMovieCounts } from '@/lib/actions';
 
-const FilterToolbar = ({ tiers }: { tiers: Tier[] }) => {
+const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: number[] }) => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { replace } = useRouter();
@@ -38,6 +40,80 @@ const FilterToolbar = ({ tiers }: { tiers: Tier[] }) => {
       params.delete('tierId');
     }
     replace(`${pathname}?${params.toString()}`);
+  };
+
+  const handleSyncEmbyIds = async () => {
+    const { dismiss, update, id: toastId } = toast({ 
+      title: '正在获取 Emby ID...', 
+      description: '请稍候，正在为您准备任务...', 
+      duration: Infinity 
+    });
+
+    try {
+      const { taskId } = await syncEmbyIds(actressIds.map(String));
+
+      const interval = setInterval(async () => {
+        const response = await fetch(`/api/actresses/sync-emby-ids/${taskId}`);
+        const task = await response.json();
+
+        if (response.ok) {
+          update({ 
+            title: `正在获取 Emby ID... (${task.progress}/${task.total})`,
+            description: `当前状态: ${task.status}`
+          });
+
+          if (task.status === 'completed') {
+            clearInterval(interval);
+            update({ title: '成功', description: 'Emby ID 获取任务已完成。' });
+          }
+        } else {
+          clearInterval(interval);
+          update({ title: '错误', description: task.error, variant: 'destructive' });
+        }
+      }, 2000);
+
+    } catch (error) {
+      dismiss();
+      toast({ title: '错误', description: '启动 Emby ID 获取任务失败，请查看控制台日志。', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const handleSyncMovieCounts = async () => {
+    const { dismiss, update, id: toastId } = toast({ 
+      title: '正在更新影片数量...', 
+      description: '请稍候，正在为您准备任务...', 
+      duration: Infinity 
+    });
+
+    try {
+      const { taskId } = await syncMovieCounts(actressIds.map(String));
+
+      const interval = setInterval(async () => {
+        const response = await fetch(`/api/actresses/sync-movie-counts/${taskId}`);
+        const task = await response.json();
+
+        if (response.ok) {
+          update({ 
+            title: `正在更新影片数量... (${task.progress}/${task.total})`,
+            description: `当前状态: ${task.status}`
+          });
+
+          if (task.status === 'completed') {
+            clearInterval(interval);
+            update({ title: '成功', description: '影片数量更新任务已完成。' });
+          }
+        } else {
+          clearInterval(interval);
+          update({ title: '错误', description: task.error, variant: 'destructive' });
+        }
+      }, 2000);
+
+    } catch (error) {
+      dismiss();
+      toast({ title: '错误', description: '启动影片数量更新任务失败，请查看控制台日志。', variant: 'destructive' });
+      console.error(error);
+    }
   };
 
   return (
@@ -81,11 +157,21 @@ const FilterToolbar = ({ tiers }: { tiers: Tier[] }) => {
       </div>
 
       <div className="flex items-center gap-2 border-l border-zinc-800 pl-4">
-        <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200 tooltip-trigger" title="Refresh Data" onClick={() => replace(pathname)}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        <button 
+          onClick={handleSyncEmbyIds} 
+          className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200 tooltip-trigger disabled:opacity-50 disabled:cursor-not-allowed"
+          title="获取 Emby ID"
+          disabled={actressIds.length === 0}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-fingerprint w-4 h-4"><path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4"/><path d="M5 19.5A8.5 8.5 0 0 1 12 13a8.5 8.5 0 0 1 7 6.5"/><path d="M12 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/><path d="M6 12a6 6 0 0 1 6-6"/></svg>
         </button>
-        <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+        <button 
+          onClick={handleSyncMovieCounts} 
+          className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="更新影片数量"
+          disabled={actressIds.length === 0}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-film w-4 h-4"><path d="M4.5 4.5h15c.6 0 1 .4 1 1v13c0 .6-.4 1-1 1h-15c-.6 0-1-.4-1-1v-13c0-.6.4-1 1-1z"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7h18"/><path d="M3 12h18"/><path d="M3 17h18"/></svg>
         </button>
       </div>
     </div>

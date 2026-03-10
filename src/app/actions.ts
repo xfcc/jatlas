@@ -103,7 +103,12 @@ export async function getActresses(params?: {
         where.name = { contains: query, mode: 'insensitive' }; // 模糊搜索
     }
     if (status) {
-        where.tier = { status: status }; // 按评级状态过滤
+        const tiersWithStatus = await prisma.tier.findMany({
+            where: { status: status },
+            select: { id: true },
+        });
+        const tierIds = tiersWithStatus.map(t => t.id);
+        where.tierId = { in: tierIds };
     }
     if (tierId) {
         where.tierId = parseInt(tierId, 10); // 按评级 ID 过滤

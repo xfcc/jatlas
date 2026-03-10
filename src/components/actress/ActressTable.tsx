@@ -19,15 +19,27 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 import { Button } from '@/components/ui/button';
 
+import { Checkbox } from '@/components/ui/checkbox';
+
 interface ActressTableProps {
   actresses: OptimisticActress[];
   tiers: Tier[];
   total: number;
   page: number;
   pageSize: number;
+  onSelectionChange: (selectedIds: number[]) => void;
+  selectedIds: number[];
 }
 
-export function ActressTable({ actresses: initialActresses, tiers, total, page, pageSize }: ActressTableProps) {
+export function ActressTable({ 
+  actresses: initialActresses, 
+  tiers, 
+  total, 
+  page, 
+  pageSize, 
+  onSelectionChange,
+  selectedIds
+}: ActressTableProps) {
   const { optimisticActresses, handleCreateActress, handleUpdateActress, handleDeleteActress } = useOptimisticActresses(initialActresses, tiers);
   const { toast } = useToast();
   const { isFormOpen, setIsFormOpen, selectedActress, setSelectedActress, isBatchFormOpen, setIsBatchFormOpen } = useConsole();
@@ -38,6 +50,22 @@ export function ActressTable({ actresses: initialActresses, tiers, total, page, 
   const { replace } = useRouter();
 
   const tierMap = new Map(tiers.map((t) => [t.id, t]));
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      onSelectionChange(optimisticActresses.map(a => a.id));
+    } else {
+      onSelectionChange([]);
+    }
+  };
+
+  const handleSelectRow = (id: number, checked: boolean) => {
+    if (checked) {
+      onSelectionChange([...selectedIds, id]);
+    } else {
+      onSelectionChange(selectedIds.filter(selectedId => selectedId !== id));
+    }
+  };
 
   const handleSort = (column: string) => {
     const params = new URLSearchParams(searchParams);
@@ -144,6 +172,12 @@ export function ActressTable({ actresses: initialActresses, tiers, total, page, 
         <Table className="w-full text-sm text-left text-zinc-400">
           <TableHeader className="text-xs text-zinc-500 uppercase bg-zinc-900/80 border-b border-zinc-800/80">
             <TableRow>
+              <TableHead scope="col" className="p-4">
+                <Checkbox 
+                  onCheckedChange={(checked) => handleSelectAll(checked === true)}
+                  checked={selectedIds.length === optimisticActresses.length && optimisticActresses.length > 0}
+                />
+              </TableHead>
               <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">演员名称 (Name)</TableHead>
               <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">状态 (Status)</TableHead>
               <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">层级 (Tier)</TableHead>
@@ -175,6 +209,12 @@ export function ActressTable({ actresses: initialActresses, tiers, total, page, 
             ) : (
               optimisticActresses.map((actress) => (
                 <TableRow key={actress.id} className="bg-zinc-900/20 hover:bg-zinc-900/60 transition-colors cursor-default group">
+                  <TableCell className="p-4">
+                    <Checkbox 
+                      onCheckedChange={(checked) => handleSelectRow(actress.id, checked === true)}
+                      checked={selectedIds.includes(actress.id)}
+                    />
+                  </TableCell>
                   <TableCell className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">{actress.name.substring(0, 2)}</div>

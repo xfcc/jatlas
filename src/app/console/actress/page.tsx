@@ -1,8 +1,5 @@
-export const dynamic = 'force-dynamic';
-
 import { getActresses, getTiers } from '@/app/actions';
-import { ActressTable } from '@/components/actress/ActressTable';
-import FilterToolbar from '@/components/layout/FilterToolbar';
+import ActressView from './ActressView';
 
 export default async function ConsolePage({ searchParams }: { 
   searchParams?: { 
@@ -21,10 +18,5 @@ export default async function ConsolePage({ searchParams }: {
   const { data: actresses, total } = await getActresses({ ...searchParams, page, pageSize });
   const tiers = await getTiers();
 
-  return (
-    <>
-      <FilterToolbar tiers={tiers} />
-      <ActressTable actresses={actresses} tiers={tiers} total={total} page={page} pageSize={pageSize} />
-    </>
-  );
+  return <ActressView actresses={actresses} tiers={tiers} total={total} page={page} pageSize={pageSize} />;
 }
