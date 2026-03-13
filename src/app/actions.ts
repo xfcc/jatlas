@@ -469,9 +469,9 @@ export async function backupDatabase() {
     const backupFilePath = path.join(backupDir, backupFileName);
     
     // Step 2: 定位 pg_dump 工具和数据库连接
-    const pgDumpPath = '/Applications/Postgres.app/Contents/Versions/18/bin/pg_dump';
+    const pgDumpCmd = process.env.PG_DUMP_PATH || 'pg_dump';
     const dbUrl = process.env.DATABASE_URL?.split('?')[0];
-    const command = `${pgDumpPath} "${dbUrl}" > "${backupFilePath}"`;
+    const command = `${pgDumpCmd} "${dbUrl}" > "${backupFilePath}"`;
 
     // Step 3: 执行命令行备份
     await execAsync(command);
@@ -505,10 +505,9 @@ export async function restoreDatabase(fileName: string) {
     // Step 1: 安全第一，在恢复前自动执行一次新的备份
     await backupDatabase();
 
-    // Step 2: 准备 psql 恢复命令
-    const psqlPath = '/Applications/Postgres.app/Contents/Versions/18/bin/psql';
+    const psqlCmd = process.env.PSQL_PATH || 'psql';
     const dbUrl = process.env.DATABASE_URL?.split('?')[0];
-    const command = `${psqlPath} "${dbUrl}" < "${backupFilePath}"`;
+    const command = `${psqlCmd} "${dbUrl}" < "${backupFilePath}"`;
 
     // Step 3: 执行恢复
     await execAsync(command);
