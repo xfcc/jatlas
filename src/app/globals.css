@@ -87,10 +87,10 @@
 @layer components {
   .progress-danger-glow { box-shadow: 0 0 8px var(--progress-danger-glow); }
   .landing-container {
-    @apply max-w-6xl px-6;
+    @apply max-w-5xl mx-auto px-6;
   }
   .bento-card {
-    @apply bg-zinc-900/70 border border-zinc-800 rounded-xl p-8 backdrop-blur-sm transition-colors hover:border-zinc-700;
+    @apply bg-zinc-900/70 border border-zinc-800 rounded-xl p-6 backdrop-blur-sm transition-colors hover:border-zinc-700;
   }
   .bento-tag {
     @apply bg-zinc-800 text-zinc-300 px-3 py-1 rounded-md;

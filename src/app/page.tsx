@@ -1,138 +1,486 @@
 
-import { ChevronRight, Milestone, Zap } from "lucide-react";
+import {
+  ChevronRight,
+  Eye,
+  Zap,
+  Layers,
+  Activity,
+  Shield,
+  Database,
+  Server,
+} from "lucide-react";
 import Link from "next/link";
+
+/** 与导航、正文、页脚共用同一列宽与水平内边距 */
+const landingShell = "max-w-5xl mx-auto px-6";
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="mb-6">
+      <span className="text-[11px] font-mono text-zinc-600 tracking-[0.2em] uppercase select-none">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
     <>
+      {/* ── Nav ── */}
       <nav className="fixed top-0 w-full z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/50">
-        <div className="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto opacity-0 animate-fade-up">
-            <div className="text-xl font-black tracking-widest text-white select-none flex items-center gap-2">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse-slow"></div>
-                JATLAS
+        <div
+          className={`flex items-center justify-between py-3.5 opacity-0 animate-fade-up ${landingShell}`}
+        >
+          <div className="flex items-center gap-3 select-none">
+            <div className="flex items-center gap-2 text-lg font-black tracking-widest text-white">
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse-slow" />
+              JATLAS
             </div>
-            <Link href="/console" className="border border-zinc-800 hover:bg-zinc-800 hover:text-white px-5 py-2 rounded-lg text-sm text-zinc-400 transition-all duration-200 cursor-pointer flex items-center gap-2">
-                <span>进入控制台</span>
-                <ChevronRight size={16} />
+            <div className="w-px h-4 bg-zinc-800" />
+            <span className="text-[11px] text-zinc-500 font-mono tracking-wider hidden sm:inline">
+              数字资产管控中枢
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="bg-zinc-900/50 border border-zinc-800 text-zinc-600 text-[10px] px-2.5 py-1 rounded-full tracking-[0.12em] select-none items-center gap-1.5 font-mono hidden sm:flex">
+              <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+              V1.2
+            </div>
+            <Link
+              href="/console"
+              className="border border-zinc-800 hover:bg-zinc-800 hover:text-white px-4 py-1.5 rounded-lg text-sm text-zinc-400 transition-all duration-200 cursor-pointer flex items-center gap-2"
+            >
+              进入控制台
+              <ChevronRight size={14} />
             </Link>
+          </div>
         </div>
       </nav>
 
-      <main className="flex flex-col items-center justify-center pt-48 pb-32 px-4 opacity-0 animate-fade-up delay-100">
-        <div className="bg-zinc-900/50 border border-zinc-800 text-zinc-400 text-xs px-4 py-1.5 rounded-full mb-8 tracking-wider backdrop-blur-sm select-none flex items-center gap-2 font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          V1.0 BUILD · SYSTEM ONLINE
-        </div>
-        <h1 className="text-6xl md:text-8xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white via-white to-zinc-600 text-center mb-6 drop-shadow-sm select-none leading-tight">
-          私人 JAV 资产管理中枢
-        </h1>
-        <p className="text-xl md:text-2xl text-zinc-400 max-w-3xl mx-auto text-center leading-relaxed mb-12 select-none font-light tracking-wide">
-          Jav Actress Tier Ledger & Asset System <br />
-          为你的“仓鼠症”与“囤积癖”提供一个冷峻的量化解决方案。
-        </p>
-      </main>
+      {/* ── Problem ── */}
+      <section
+        id="manifesto"
+        className={`${landingShell} pt-20 pb-16 opacity-0 animate-fade-up delay-100`}
+      >
+        <SectionLabel label="The Problem" />
 
-      <section className="max-w-5xl mx-auto px-6 py-24 border-y border-white/20 opacity-0 animate-fade-up delay-200">
-        <h2 className="text-3xl md:text-5xl font-bold text-zinc-100 mb-8 tracking-tight">记忆是不可靠的介质。</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <p className="text-zinc-400 leading-relaxed text-lg">
-            面对近千位女优和上万部本地 AV 资产，传统的“按物理硬盘+文件夹”分类管理模式必然走向系统熵增。你无法精准记住谁被分配在了哪个层级，更无法实时同步她们的生命周期。
-          </p>
-          <p className="text-zinc-400 leading-relaxed text-lg">
-            JATLAS 的诞生，就是用“数据库与规则引擎”对“人肉记忆”进行降维打击。用严密的层级字典取代感性偏好，将每一次下载行为纳入风控阈值。
-          </p>
+        <h2 className="text-3xl md:text-4xl font-bold text-zinc-100 mb-3 tracking-tight leading-tight">
+          记忆是不可靠的介质，
+          <span className="text-zinc-500">文件夹是注定崩塌的秩序。</span>
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-red-400/80 font-mono text-[11px] tracking-[0.15em]">
+              <div className="w-1.5 h-1.5 rounded-full bg-red-500/60" />
+              STORAGE OVERFLOW
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-200">存储失控</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed">
+              无水位限制的物理囤积模式下，低价值资产无休止挤占空间，直到硬盘报警才被迫介入——但此时清理成本已不可控。
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-yellow-400/80 font-mono text-[11px] tracking-[0.15em]">
+              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/60" />
+              MEMORY CHAOS
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-200">记忆混乱</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed">
+              近千量级的资产散布多级目录，人脑无法精确追踪每一项的评级、路径与归属。规模越大，信息熵越高。
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-orange-400/80 font-mono text-[11px] tracking-[0.15em]">
+              <div className="w-1.5 h-1.5 rounded-full bg-orange-500/60" />
+              SYNC LATENCY
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-200">信息滞后</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed">
+              状态变更（引退、重新出道、改名）无法实时同步至管理策略，层级配置与真实偏好长期脱节。
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-6 py-32 opacity-0 animate-fade-up delay-300">
-        <div className="mb-16 text-center">
-          <h2 className="text-4xl font-black text-white mb-4">解决方案</h2>
-          <p className="text-zinc-400 text-lg max-w-2xl mx-auto">三大核心逻辑，为你重塑仓储秩序，直击“仓鼠党”与“囤积癖”的痛点。</p>
+      {/* ── Solutions ── */}
+      <section
+        className={`${landingShell} py-16 opacity-0 animate-fade-up delay-300`}
+      >
+        <SectionLabel label="Solutions" />
+
+        <div className="mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
+            量化管控，取代感性判断
+          </h2>
+          <p className="text-zinc-500 text-base max-w-2xl">
+            四大核心引擎，从风控可视化、极速交互、生命周期管理到事件溯源，构建完整的资产管控闭环。
+          </p>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
-          <div className="bg-zinc-900/30 border border-zinc-800/60 p-8 rounded-3xl hover:border-zinc-700/80 transition-colors backdrop-blur-md">
-            <h3 className="text-2xl font-bold text-zinc-100 mb-4">视觉风控</h3>
-            <p className="text-zinc-400/90 leading-relaxed mb-6 text-base">
-              全局 Design Tokens 驱动的红绿灯系统，用明确的规则替换感性描述，精准暴露资产溢出风险。
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Visual Risk Control */}
+          <div className="bento-card">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700/50">
+                <Eye size={16} className="text-zinc-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-100">
+                  视觉风控系统
+                </h3>
+                <p className="text-[11px] text-zinc-600 font-mono tracking-wider">
+                  VISUAL RISK CONTROL
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 leading-relaxed text-sm mb-4">
+              全局 Design Tokens
+              驱动的三级预警机制。每一个层级的容量状态，都被抽象为可量化的信号灯——取代「好像快满了」的模糊感知。
             </p>
-            <div className="flex flex-col space-y-3 font-mono text-sm">
-              <div className="flex items-center gap-3 text-green-400"><div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_var(--shadow-green-glow)]"></div>Safe: 容量健康</div>
-              <div className="flex items-center gap-3 text-yellow-400"><div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_var(--shadow-yellow-glow)]"></div>Warning: 20% 以内超载</div>
-              <div className="flex items-center gap-3 text-red-400"><div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_var(--shadow-red-glow)]"></div>Danger: 强制断舍离</div>
+            <div className="flex flex-col space-y-2.5 font-mono text-xs">
+              <div className="flex items-center gap-3 text-emerald-400/90 bg-emerald-500/5 border border-emerald-500/10 px-3 py-2 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_var(--shadow-green-glow)]" />
+                SAFE — 容量健康，正常运作
+              </div>
+              <div className="flex items-center gap-3 text-yellow-400/90 bg-yellow-500/5 border border-yellow-500/10 px-3 py-2 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-yellow-500 shadow-[0_0_8px_var(--shadow-yellow-glow)]" />
+                WARNING — 接近阈值，建议调仓
+              </div>
+              <div className="flex items-center gap-3 text-red-400/90 bg-red-500/5 border border-red-500/10 px-3 py-2 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_var(--shadow-red-glow)]" />
+                DANGER — 超载触发，强制断舍离
+              </div>
             </div>
           </div>
 
-          <div className="bg-zinc-900/30 border border-zinc-800/60 p-8 rounded-3xl hover:border-zinc-700/80 transition-colors backdrop-blur-md">
-            <h3 className="text-2xl font-bold text-zinc-100 mb-4">毫秒级突变</h3>
-            <p className="text-zinc-400/90 leading-relaxed mb-6 text-base">
-              强调 Optimistic UI 和 Next.js Server Actions。主打“0.1 秒无延迟突变”与“原子化拦截平滑回滚”，告别 Loading 动画折磨。
+          {/* Optimistic Mutation */}
+          <div className="bento-card">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700/50">
+                <Zap size={16} className="text-zinc-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-100">
+                  零延迟突变引擎
+                </h3>
+                <p className="text-[11px] text-zinc-600 font-mono tracking-wider">
+                  OPTIMISTIC MUTATION
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 leading-relaxed text-sm mb-4">
+              基于 Next.js Server Actions 与 React useOptimistic 构建。UI 在
+              0.1s
+              内完成状态切换，后台静默持久化。失败时原子化回滚，无需加载动画干扰操作流。
             </p>
             <div className="flex flex-wrap gap-2">
-              <span className="px-2.5 py-1 bg-zinc-800/50 border border-zinc-700 rounded-full text-xs text-zinc-300 font-mono">Optimistic UI</span>
-              <span className="px-2.5 py-1 bg-zinc-800/50 border border-zinc-700 rounded-full text-xs text-zinc-300 font-mono">Server Actions</span>
+              <span className="bento-tag text-xs font-mono">
+                Server Actions
+              </span>
+              <span className="bento-tag text-xs font-mono">useOptimistic</span>
+              <span className="bento-tag text-xs font-mono">
+                Atomic Rollback
+              </span>
             </div>
           </div>
 
-          <div className="bg-zinc-900/30 border border-zinc-800/60 p-8 rounded-3xl hover:border-zinc-700/80 transition-colors backdrop-blur-md">
-            <h3 className="text-2xl font-bold text-zinc-100 mb-4">双轨天梯</h3>
-            <p className="text-zinc-400/90 leading-relaxed text-base">
-              补充“现役/引退”生命周期与层级绑定的逻辑，点出“信息滞后灾难”的痛点解法，将感性偏好转化为严密的资产分类字典。
+          {/* Dual-Track Lifecycle */}
+          <div className="bento-card">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700/50">
+                <Layers size={16} className="text-zinc-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-100">
+                  双轨生命周期
+                </h3>
+                <p className="text-[11px] text-zinc-600 font-mono tracking-wider">
+                  DUAL-TRACK LIFECYCLE
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 leading-relaxed text-sm">
+              独立维护「现役」与「引退」两条天梯通道，每条通道绑定独立的层级字典与容量配额。当演员状态变更时，系统自动触发跨通道迁移，确保分类策略与真实状态绝对同步。
+            </p>
+          </div>
+
+          {/* Event Sourcing */}
+          <div className="bento-card">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700/50">
+                <Activity size={16} className="text-zinc-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-100">
+                  事件溯源日志
+                </h3>
+                <p className="text-[11px] text-zinc-600 font-mono tracking-wider">
+                  EVENT SOURCING
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 leading-relaxed text-sm">
+              独立部署 AssetLog
+              防篡改日志表，精确记录每一笔资产变动的时间、类型与快照。支撑全局风控大盘的历史回溯与增量分析，为未来的趋势预判提供数据基底。
             </p>
           </div>
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 pt-24 pb-16 text-center opacity-0 animate-fade-up delay-400">
-        <h2 className="text-3xl font-bold text-white mb-4">技术底座</h2>
-        <p className="text-zinc-400 text-lg max-w-3xl mx-auto mb-8">
-          全站采用冷灰 (Zinc) 极简风格，剥离一切干扰信息的 UI 元素。我们选择并只选择最冷峻的技术栈，斩断历史包袱。
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3 font-mono text-zinc-300">
-          <div className="px-4 py-2 bg-zinc-950/80 border border-zinc-800 rounded-lg text-sm">React 18</div>
-          <div className="px-4 py-2 bg-zinc-950/80 border border-zinc-800 rounded-lg text-sm">Next.js 14 (App Router)</div>
-          <div className="px-4 py-2 bg-zinc-950/80 border border-zinc-800 rounded-lg text-sm">PostgreSQL</div>
-          <div className="px-4 py-2 bg-zinc-950/80 border border-zinc-800 rounded-lg text-sm">Prisma</div>
+      {/* ── Tech Stack ── */}
+      <section
+        className={`${landingShell} py-16 opacity-0 animate-fade-up delay-400`}
+      >
+        <SectionLabel label="Tech Stack" />
+
+        <div className="mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
+            技术底座
+          </h2>
+          <p className="text-zinc-500 text-base max-w-xl">
+            全栈同构架构，从视图层到持久化层采用统一的 TypeScript
+            类型约束，剥离一切冗余抽象。
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-zinc-500 text-[11px] font-mono tracking-[0.15em] uppercase">
+              <Shield size={12} />
+              Frontend
+            </div>
+            <div className="space-y-2">
+              {[
+                ["React", "v18"],
+                ["Next.js", "v14 App Router"],
+                ["Tailwind CSS", "v3"],
+                ["shadcn/ui", "Radix"],
+              ].map(([name, ver]) => (
+                <div
+                  key={name}
+                  className="flex items-center justify-between px-3 py-2.5 bg-zinc-900/50 border border-zinc-800/60 rounded-lg"
+                >
+                  <span className="text-sm text-zinc-300">{name}</span>
+                  <span className="text-[11px] text-zinc-600 font-mono">
+                    {ver}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-zinc-500 text-[11px] font-mono tracking-[0.15em] uppercase">
+              <Database size={12} />
+              Backend & Data
+            </div>
+            <div className="space-y-2">
+              {[
+                ["Server Actions", "RSC"],
+                ["PostgreSQL", "RDBMS"],
+                ["Prisma", "ORM"],
+              ].map(([name, ver]) => (
+                <div
+                  key={name}
+                  className="flex items-center justify-between px-3 py-2.5 bg-zinc-900/50 border border-zinc-800/60 rounded-lg"
+                >
+                  <span className="text-sm text-zinc-300">{name}</span>
+                  <span className="text-[11px] text-zinc-600 font-mono">
+                    {ver}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-zinc-500 text-[11px] font-mono tracking-[0.15em] uppercase">
+              <Server size={12} />
+              Infrastructure
+            </div>
+            <div className="space-y-2">
+              {[
+                ["Emby API", "Sync"],
+                ["Docker", "Compose"],
+                ["TypeScript", "Strict"],
+              ].map(([name, ver]) => (
+                <div
+                  key={name}
+                  className="flex items-center justify-between px-3 py-2.5 bg-zinc-900/50 border border-zinc-800/60 rounded-lg"
+                >
+                  <span className="text-sm text-zinc-300">{name}</span>
+                  <span className="text-[11px] text-zinc-600 font-mono">
+                    {ver}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-6 py-24 border-t border-zinc-800/50">
-        <div className="text-center mb-16">
-            <h2 className="text-4xl font-black text-white mb-4">演进路线图</h2>
-            <p className="text-zinc-400 text-lg max-w-2xl mx-auto">我们从终局视野出发，规划了四个核心演进阶段。</p>
+      {/* ── Roadmap ── */}
+      <section className={`${landingShell} py-16`}>
+        <SectionLabel label="Roadmap" />
+
+        <div className="mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
+            演进路线
+          </h2>
+          <p className="text-zinc-500 text-base max-w-xl">
+            从底座到智能，逐阶段释放管控能力。每个版本聚焦一个核心命题。
+          </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-zinc-900/30 border border-zinc-800/60 p-6 rounded-xl">
-                <span className="inline-block px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold rounded-full mb-4">Phase 1: Done</span>
-                <h3 className="text-lg font-bold text-zinc-100 mb-2">底座大一统</h3>
-                <p className="text-zinc-400 text-sm">Next.js + PgSQL 底座与 Optimistic UI 落地。</p>
+
+        <div className="relative">
+          <div className="absolute left-[19px] top-0 bottom-0 w-px bg-gradient-to-b from-emerald-500/50 via-blue-500/30 to-zinc-800/20 hidden md:block" />
+
+          <div className="space-y-2">
+            {/* v1.0 */}
+            <div className="flex gap-6 items-start">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                </div>
+              </div>
+              <div className="pb-6">
+                <span className="text-[11px] font-mono text-emerald-400 tracking-[0.15em]">
+                  v1.0 — SHIPPED
+                </span>
+                <h3 className="text-xl font-bold text-zinc-100 mt-1 mb-2">
+                  底座与核心交互
+                </h3>
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-lg">
+                  Next.js + PostgreSQL 架构落地。实装 CRUD、动态水位线、Optimistic
+                  UI，完成从零到一的核心突变闭环。
+                </p>
+              </div>
             </div>
-            <div className="bg-zinc-900/30 border border-zinc-800/60 p-6 rounded-xl">
-                <span className="inline-block px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold rounded-full mb-4">Phase 2: Next</span>
-                <h3 className="text-lg font-bold text-zinc-100 mb-2">毫秒级刮削</h3>
-                <p className="text-zinc-400 text-sm">Emby RESTful API 对账。</p>
+
+            {/* v1.1 */}
+            <div className="flex gap-6 items-start">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                </div>
+              </div>
+              <div className="pb-6">
+                <span className="text-[11px] font-mono text-emerald-400 tracking-[0.15em]">
+                  v1.1 — SHIPPED
+                </span>
+                <h3 className="text-xl font-bold text-zinc-100 mt-1 mb-2">
+                  Emby 自动对账引擎
+                </h3>
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-lg">
+                  接入局域网 Emby RESTful API，基于 PersonId
+                  实现一键库存抓取。支持多 ID
+                  绑定防止数据分裂，保持逻辑看板与物理硬盘的绝对一致。
+                </p>
+              </div>
             </div>
-            <div className="bg-zinc-900/30 border border-zinc-800/60 p-6 rounded-xl opacity-60">
-                <span className="inline-block px-3 py-1 bg-zinc-500/10 border border-zinc-500/20 text-zinc-400 text-xs font-bold rounded-full mb-4">Phase 3: Future</span>
-                <h3 className="text-lg font-bold text-zinc-100 mb-2">自动化调仓</h3>
-                <p className="text-zinc-400 text-sm">局域网 NAS API 软链接 (Symlink) 编排。</p>
+
+            {/* v1.2 */}
+            <div className="flex gap-6 items-start">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                </div>
+              </div>
+              <div className="pb-6">
+                <span className="text-[11px] font-mono text-emerald-400 tracking-[0.15em]">
+                  v1.2 — SHIPPED
+                </span>
+                <h3 className="text-xl font-bold text-zinc-100 mt-1 mb-2">
+                  事件溯源与风控大盘
+                </h3>
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-lg">
+                  实装 AssetLog 防篡改日志体系，上线全局风控
+                  Dashboard。将静态报表转化为可执行的管控指令：生态透视、红线阻断、清理待办。
+                </p>
+              </div>
             </div>
-            <div className="bg-zinc-900/30 border border-zinc-800/60 p-6 rounded-xl opacity-60">
-                <span className="inline-block px-3 py-1 bg-zinc-500/10 border border-zinc-500/20 text-zinc-400 text-xs font-bold rounded-full mb-4">Phase 4: Future</span>
-                <h3 className="text-lg font-bold text-zinc-100 mb-2">动态天梯</h3>
-                <p className="text-zinc-400 text-sm">时间序列喜好变迁雷达。</p>
+
+            {/* v1.3 — In Progress */}
+            <div className="flex gap-6 items-start">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                </div>
+              </div>
+              <div className="pb-6">
+                <span className="text-[11px] font-mono text-blue-400 tracking-[0.15em]">
+                  v1.3 — IN PROGRESS
+                </span>
+                <h3 className="text-xl font-bold text-zinc-100 mt-1 mb-2">
+                  NAS 物理层联动
+                </h3>
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-lg">
+                  接入 NAS API
+                  监控物理硬盘使用率，基于层级规则自动生成软链接编排指令，打通逻辑层与物理存储的最后一公里。
+                </p>
+              </div>
             </div>
+
+            {/* v2.0 — Planned */}
+            <div className="flex gap-6 items-start opacity-50">
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-zinc-800/50 border border-zinc-700/30 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-600" />
+                </div>
+              </div>
+              <div>
+                <span className="text-[11px] font-mono text-zinc-500 tracking-[0.15em]">
+                  v2.0 — PLANNED
+                </span>
+                <h3 className="text-xl font-bold text-zinc-100 mt-1 mb-2">
+                  趋势预判与动态天梯
+                </h3>
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-lg">
+                  基于时间序列日志分析资产增量斜率，预判审美偏好转移，实现天梯的自适应调仓建议。
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="max-w-4xl mx-auto px-6 py-24 text-center opacity-0 animate-fade-up delay-400">
-        <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">准备好重塑秩序了吗？</h2>
-        <p className="text-zinc-400 text-xl mb-10">
-          停止盲目的物理囤积，立刻拉起你的风控大盘。
-        </p>
-        <Link href="/console" className="bg-zinc-100 text-zinc-900 font-bold px-12 py-5 rounded-xl hover:bg-white transition-all hover:scale-[1.02] shadow-lg flex items-center justify-center gap-2 mx-auto">
-          进入 Console <ChevronRight size={20} />
-        </Link>
+      {/* ── CTA ── */}
+      <section
+        className={`${landingShell} py-16 opacity-0 animate-fade-up delay-400`}
+      >
+        <div className="flex items-center justify-between flex-wrap gap-6">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight leading-tight">
+              停止盲目囤积，<span className="text-zinc-500">拉起你的风控大盘。</span>
+            </h2>
+            <p className="text-zinc-500 text-sm">
+              从这里开始，让每一次资产决策都有据可依。
+            </p>
+          </div>
+          <Link
+            href="/console"
+            className="inline-flex items-center gap-2 bg-white text-zinc-900 font-semibold px-8 py-3 rounded-lg hover:bg-zinc-200 transition-all hover:scale-[1.02] text-sm flex-shrink-0"
+          >
+            进入 Console <ChevronRight size={16} />
+          </Link>
+        </div>
       </section>
+
+      {/* ── Footer ── */}
+      <footer className="border-t border-zinc-800/50 py-8">
+        <div className={`flex items-center justify-between ${landingShell}`}>
+          <span className="text-[11px] text-zinc-600 font-mono select-none">
+            JATLAS v1.2
+          </span>
+          <span className="text-[11px] text-zinc-700 select-none">
+            Desktop-Class Web App · Physical Isolation
+          </span>
+        </div>
+      </footer>
     </>
   );
 }

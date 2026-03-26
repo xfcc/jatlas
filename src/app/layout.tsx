@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} min-h-screen relative selection:bg-zinc-800 selection:text-white pb-32`}>
+      <body className={`${inter.className} min-h-screen relative selection:bg-zinc-800 selection:text-white`}>
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--radial-gradient-start),var(--radial-gradient-end))]"></div>
         <div className="absolute inset-0 -z-20 bg-grid-zinc [mask-image:linear-gradient(to_bottom,white,transparent)]"></div>
         {children}

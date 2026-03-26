@@ -1,88 +1,99 @@
-# JATLAS (Jav Actress Tier Ledger & Asset System)
+# JATLAS
 
-**私人数字资产风控大盘与天梯中枢。**
+**Jav Actress Tier Ledger & Asset System — 数字资产管控中枢。**
+
+![JATLAS 首页](./public/index.png)
 
 <div align="center">
   <h3>
-    <a href="#-项目介绍-introduction">📖 项目介绍</a>
+    <a href="#-项目介绍">📖 项目介绍</a>
     <span> | </span>
-    <a href="#-本地部署-deployment">🚀 本地部署</a>
+    <a href="#-本地部署">🚀 本地部署</a>
   </h3>
 </div>
 
 ---
 
-<h2 id="-项目介绍-introduction">📖 项目介绍 (Introduction)</h2>
+<h2 id="-项目介绍">📖 项目介绍</h2>
 
-JATLAS 专为大规模本地视频收藏设计。用强类型数据和自动化规则，取代基于文件夹和人肉记忆的低效管理。
+JATLAS 专为大规模本地影视收藏设计。用数据库与规则引擎取代人肉记忆，为资产管理建立量化管控体系。
 
-### 核心痛点 (The Problem)
-* **存储失控**：缺乏水位限制，低价值资产无休止挤占物理空间。
-* **记忆混乱**：资产随规模扩大而分散，难以精确追踪评级与存放路径。
-* **信息滞后**：状态变更（如引退）未能及时同步，导致管理策略失效。
+### 核心痛点
 
-### 核心特性 (Core Features)
+| 痛点 | 描述 |
+|---|---|
+| **存储失控** | 无水位限制的物理囤积模式下，低价值资产无休止挤占空间，直到硬盘报警才被迫介入——但此时清理成本已不可控。 |
+| **记忆混乱** | 近千量级的资产散布多级目录，人脑无法精确追踪每一项的评级、路径与归属。规模越大，信息熵越高。 |
+| **信息滞后** | 状态变更（引退、重新出道、改名）无法实时同步至管理策略，层级配置与真实偏好长期脱节。 |
 
-**1. 资产风控大盘 (Dashboard & Actionable Insights)**
-将静态报表转化为执行指令：
-* **生态透视**：监控各梯队（Tier）人数与资产占比，防范评级通胀。
-* **红线阻断**：自动提取“爆仓资产”与“停滞资产”，生成清理待办清单。
+### 核心引擎
 
-![Dashboard 预览](./public/dashboard.png)
-*(图：JATLAS v1.2 全局风控大盘)*
+**1. 视觉风控系统 (Visual Risk Control)**
 
-**2. Emby 自动对账 (Emby Sync Engine)**
-基于局域网 Emby RESTful API 与 `PersonId` 实现数据抓取。将刮削器的真实库存一键覆写回大盘，保持逻辑看板与物理硬盘的绝对一致。
+全局 Design Tokens 驱动的三级预警机制。每一个层级的容量状态都被抽象为可量化的信号灯——取代「好像快满了」的模糊感知。
 
-**3. 动态水位与乐观更新 (Dynamic Quota & Optimistic UI)**
-* **视觉风控**：设定分类限额，通过 🟢 安全、🟡 警告、🔴 危险 全局 Token 自动对冲库存。
-* **零延迟响应**：基于 Next.js Server Actions 与 `useOptimistic`，UI 状态 0.1 秒突变，后台静默同步。
+* 🟢 **SAFE** — 容量健康，正常运作
+* 🟡 **WARNING** — 接近阈值，建议调仓
+* 🔴 **DANGER** — 超载触发，强制断舍离
 
-![控制台列表预览](./public/actress.png)
-*(图：JATLAS 资产控制台与动态水位线)*
+**2. 零延迟突变引擎 (Optimistic Mutation)**
 
-**4. 事件溯源架构 (Event-Sourcing)**
-采用 Next.js 同构架构与 Zinc 暗黑极简规范。数据库层独立部署 `AssetLog` 防篡改日志表，精确记录资产时间轴的每一笔增删流水。
+基于 Next.js Server Actions 与 React `useOptimistic` 构建。UI 在 0.1s 内完成状态切换，后台静默持久化。失败时原子化回滚，无需加载动画干扰操作流。
 
-### 技术底座 (Tech Stack)
-* **框架**: React 18 + Next.js 14 (App Router)
-* **数据流**: Server Actions + `useOptimistic`
-* **持久化**: PostgreSQL + Prisma ORM
-* **UI**: Tailwind CSS 3 + shadcn/ui
+**3. 双轨生命周期 (Dual-Track Lifecycle)**
 
-### 演进路线 (Roadmap)
-* **v1.0 (Done)**: 核心 CRUD、动态水位线、Optimistic UI。
-* **v1.1 (Done)**: 接入 Emby API 打通自动抓取，支持多 ID 绑定防分裂。
-* **v1.2 (Done)**: 实装 `AssetLog` 日志体系，上线全局风控大盘。
-* **v1.3 (Next)**: 接入 NAS API 监控物理硬盘，基于规则自动生成软链接 (Symlink)。
-* **v2.0 (Future)**: 基于时间序列与日志分析资产增量斜率，预判审美转移。
+独立维护「现役」与「引退」两条天梯通道，每条通道绑定独立的层级字典与容量配额。当演员状态变更时，系统自动触发跨通道迁移，确保分类策略与真实状态绝对同步。
 
-<br>
+**4. 事件溯源日志 (Event Sourcing)**
+
+独立部署 `AssetLog` 防篡改日志表，精确记录每一笔资产变动的时间、类型与快照。支撑全局风控大盘的历史回溯与增量分析，为未来的趋势预判提供数据基底。
+
+![风控大盘](./public/dashboard.png)
+*(JATLAS v1.2 全局风控大盘)*
+
+![资产控制台](./public/actress.png)
+*(资产控制台与动态水位线)*
+
+### 技术底座
+
+| 层级 | 技术 |
+|---|---|
+| **Frontend** | React 18, Next.js 14 (App Router), Tailwind CSS 3, shadcn/ui |
+| **Backend & Data** | Server Actions (RSC), PostgreSQL, Prisma ORM |
+| **Infrastructure** | Emby API (Sync), Docker Compose, TypeScript (Strict) |
+
+### 演进路线
+
+| 版本 | 状态 | 主题 | 内容 |
+|---|---|---|---|
+| **v1.0** | ✅ Shipped | 底座与核心交互 | Next.js + PostgreSQL 架构落地，实装 CRUD、动态水位线、Optimistic UI。 |
+| **v1.1** | ✅ Shipped | Emby 自动对账引擎 | 接入局域网 Emby RESTful API，基于 PersonId 一键库存抓取，多 ID 绑定防数据分裂。 |
+| **v1.2** | ✅ Shipped | 事件溯源与风控大盘 | 实装 AssetLog 防篡改日志体系，上线全局风控 Dashboard：生态透视、红线阻断、清理待办。 |
+| **v1.3** | 🔵 In Progress | NAS 物理层联动 | 接入 NAS API 监控物理硬盘使用率，基于层级规则自动生成软链接 (Symlink) 编排指令。 |
+| **v2.0** | 🔘 Planned | 趋势预判与动态天梯 | 基于时间序列日志分析资产增量斜率，预判审美偏好转移，实现天梯自适应调仓建议。 |
 
 ---
 
-<h2 id="-本地部署-deployment">🚀 本地部署 (Deployment)</h2>
+<h2 id="-本地部署">🚀 本地部署</h2>
 
 JATLAS 被设计为物理隔离的 Desktop-Class Web App。
 
 ### 0. 前置环境
 * **Node.js** (v18.17+)
 * **PostgreSQL** (Mac 推荐 Postgres.app，开启静默自启)
-* **Emby Server** (局域网可达)
+* **Emby Server** (局域网可达，留空则降级为纯手动记账)
 
 ### 1. 克隆与安装
 ```bash
-git clone [https://github.com/xfcc/JATLAS.git](https://github.com/xfcc/JATLAS.git)
+git clone https://github.com/xfcc/JATLAS.git
 cd JATLAS
 npm install
-
 ```
 
 ### 2. 环境变量配置
 
 ```bash
 cp .env.example .env
-
 ```
 
 编辑 `.env` 文件：
@@ -92,25 +103,20 @@ cp .env.example .env
 DATABASE_URL="postgresql://用户名:密码@localhost:5432/jatlas?schema=public"
 
 # [可选] Emby 引擎配置 (留空则降级为纯手动记账)
-EMBY_SERVER_URL="[http://192.168.](http://192.168.)x.x:8096" # 仅根地址，严禁带斜杠
+EMBY_SERVER_URL="http://192.168.x.x:8096"
 EMBY_API_KEY="你的_EMBY_API_KEY"
-
 ```
 
 ### 3. 数据底座迁移
 
-推送 Prisma 骨架与日志体系至本地数据库：
-
 ```bash
 npx prisma migrate dev --name init
-
 ```
 
 ### 4. 引擎点火
 
 ```bash
 npm run dev
-
 ```
 
 访问 `http://localhost:3000`，风控中枢上线。
