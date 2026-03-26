@@ -6,3 +6,4 @@ trace
 node_modules
 backups/
 .env
+.vercel/

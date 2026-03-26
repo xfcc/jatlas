@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/db';
-import { fetchEmbyIdsByName } from '@/lib/emby';
+import { fetchActressCountFromEmby } from '@/lib/emby';
 import { tasks } from '@/lib/tasks';
 
 export async function POST(request: Request) {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        if (actress.emby_id && actress.emby_id.length > 0) {
+        if (!actress.emby_id || actress.emby_id.length === 0) {
           tasks.set(taskId, {
             progress: i + 1,
             total: actressIds.length,
@@ -43,44 +43,61 @@ export async function POST(request: Request) {
             lastProcessedItem: {
               name: actress.name,
               result: 'skipped',
-              detail: '已存在 Emby ID，已跳过',
+              detail: '未关联 Emby ID，已跳过',
             },
           });
           continue;
         }
 
-        const ids = await fetchEmbyIdsByName(actress.name);
-        if (ids.length === 0) {
+        const uniqueEmbyPersonIds = Array.from(new Set(actress.emby_id));
+        const newCount = await fetchActressCountFromEmby(uniqueEmbyPersonIds);
+        const videoDelta = newCount - actress.video_count;
+
+        if (videoDelta === 0) {
+          await prisma.actress.update({
+            where: { id: actressId },
+            data: { updated_at: new Date() },
+          });
+          successful_count++;
           tasks.set(taskId, {
             progress: i + 1,
             total: actressIds.length,
             status: `processing (${successful_count} successful)`,
             lastProcessedItem: {
               name: actress.name,
-              result: 'skipped',
-              detail: 'Emby 中未找到匹配演员',
+              result: 'success',
+              detail: '库存无变化，已刷新更新时间',
             },
           });
-          continue;
+        } else {
+          await prisma.actress.update({
+            where: { id: actressId },
+            data: { video_count: newCount },
+          });
+          await prisma.assetLog.create({
+            data: {
+              actress_id: actressId,
+              actress_name: actress.name,
+              action_type: 'UPDATE',
+              video_delta: videoDelta,
+            },
+          });
+          successful_count++;
+          tasks.set(taskId, {
+            progress: i + 1,
+            total: actressIds.length,
+            status: `processing (${successful_count} successful)`,
+            lastProcessedItem: {
+              name: actress.name,
+              result: 'success',
+              detail: `已同步为 ${newCount} 部`,
+            },
+          });
         }
-
-        await prisma.actress.update({
-          where: { id: actressId },
-          data: { emby_id: { set: ids } },
-        });
-        successful_count++;
-        tasks.set(taskId, {
-          progress: i + 1,
-          total: actressIds.length,
-          status: `processing (${successful_count} successful)`,
-          lastProcessedItem: {
-            name: actress.name,
-            result: 'success',
-            detail: `已绑定 ${ids.length} 个 ID`,
-          },
-        });
       } catch (e) {
-        console.error(`Failed to process actress ${actressId}`, e);
+        console.error(`Failed to sync movie count for actress ${actressId}`, e);
+        const detail =
+          e instanceof Error ? e.message : typeof e === 'string' ? e : '同步失败';
         tasks.set(taskId, {
           progress: i + 1,
           total: actressIds.length,
@@ -88,7 +105,7 @@ export async function POST(request: Request) {
           lastProcessedItem: {
             name: `ID: ${actressId}`,
             result: 'error',
-            detail: e instanceof Error ? e.message : '数据库或 Emby 请求失败',
+            detail,
           },
         });
       }

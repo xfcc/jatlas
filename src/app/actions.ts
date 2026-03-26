@@ -58,7 +58,13 @@ export async function authenticate(
       }
 
       // Step 3: 鉴权成功，签发加密会话 Cookie
-      cookies().set('session', password, { httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+      cookies().set('session', password, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 60 * 24 * 7,
+        sameSite: 'lax',
+        path: '/',
+      });
     } catch (error) {
       // 兜底：防止鉴权流程中出现意外的服务端崩溃
       if (error instanceof Error) {
@@ -282,24 +288,26 @@ export async function batchCreateActresses(data: { tierId: number; names: string
 
         // Step 4: 对新姓名执行批量创建
         if (newNames.length > 0) {
-            const createData = newNames.map(name => ({
-                name,
-                tierId,
-                video_count: 0, // 批量创建默认为0
-                emby_id: [],
-            }));
-            await prisma.actress.createMany({ data: createData });
-
-            // Step 4.1: 批量创建的女优，暂时无法获取她们的 ID，所以日志记录简化
-            // 注意：这里我们无法获取 createMany 插入后的 ID 列表，所以日志记录会有些不精确
-            // 这是一个 Prisma 的局限。在业务上，批量入库的 video_delta 都是 0，影响不大。
-            const logData = newNames.map(name => ({
-                actress_id: 0, // 无法知道具体 ID，用 0 占位
-                actress_name: name,
-                action_type: 'CREATE' as const,
-                video_delta: 0,
-            }));
-            await prisma.assetLog.createMany({ data: logData });
+            await prisma.$transaction(async (tx) => {
+                for (const name of newNames) {
+                    const created = await tx.actress.create({
+                        data: {
+                            name,
+                            tierId,
+                            video_count: 0,
+                            emby_id: [],
+                        },
+                    });
+                    await tx.assetLog.create({
+                        data: {
+                            actress_id: created.id,
+                            actress_name: created.name,
+                            action_type: 'CREATE',
+                            video_delta: 0,
+                        },
+                    });
+                }
+            });
         }
 
         // Step 5: 使前端缓存失效，并返回本次操作的详细报告

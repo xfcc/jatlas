@@ -64,6 +64,7 @@ export async function getDashboardStats() {
             updated_at: true,
             tier: {
                 select: {
+                    id: true,
                     status: true,
                     video_limit: true,
                     name: true,
@@ -90,17 +91,20 @@ export async function getDashboardStats() {
 
     const tierDistribution = actresses.reduce((acc, actress) => {
         const tierName = actress.tier.name;
+        const tierId = actress.tier.id;
         if (!acc[tierName]) {
-            acc[tierName] = { count: 0, total_video_count: 0 };
+            acc[tierName] = { id: tierId, count: 0, total_video_count: 0 };
         }
         acc[tierName].count++;
         acc[tierName].total_video_count += actress.video_count;
         return acc;
-    }, {} as Record<string, { count: number; total_video_count: number }>);
+    }, {} as Record<string, { id: number; count: number; total_video_count: number }>);
 
     const tierStats = Object.entries(tierDistribution).map(([name, data]) => ({
         name,
-        ...data,
+        id: data.id,
+        count: data.count,
+        total_video_count: data.total_video_count,
         percentage: totalCount > 0 ? (data.count / totalCount) * 100 : 0,
     })).sort((a, b) => b.count - a.count);
 

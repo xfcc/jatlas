@@ -10,11 +10,16 @@ export default async function DashboardPage() {
 
   const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
 
-  const tierColors: { [key: string]: string } = {
-    "T0 - 核心殿堂": "bg-zinc-100",
-    "T1 - 绝对主力": "bg-zinc-400",
-    "T2 - 常规收录": "bg-zinc-600",
-  };
+  /** 按 Tier 主键稳定映射配色，与梯队显示名解耦 */
+  const tierDistributionPalette = [
+    'bg-zinc-100',
+    'bg-zinc-400',
+    'bg-zinc-600',
+    'bg-zinc-300',
+    'bg-zinc-500',
+  ] as const;
+  const tierBarClass = (tierId: number) =>
+    tierDistributionPalette[(tierId - 1) % tierDistributionPalette.length] ?? 'bg-zinc-500';
 
   return (
     <div className="max-w-7xl mx-auto space-y-12">
@@ -90,13 +95,13 @@ export default async function DashboardPage() {
             <h4 className="text-base font-medium text-zinc-300">各梯队人数</h4>
             <div className="space-y-5">
               {stats.m3.map(tier => (
-                <div className="space-y-2" key={tier.name}>
+                <div className="space-y-2" key={tier.id}>
                   <div className="flex justify-between text-sm text-zinc-400">
                     <span>{tier.name}</span>
                     <span className="font-medium text-zinc-300">{tier.count} 人 ({tier.percentage.toFixed(1)}%)</span>
                   </div>
                   <div className="h-2.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
-                    <div className={`h-full ${tierColors[tier.name] || 'bg-zinc-500'}`} style={{ width: `${tier.percentage}%` }}></div>
+                    <div className={`h-full ${tierBarClass(tier.id)}`} style={{ width: `${tier.percentage}%` }}></div>
                   </div>
                 </div>
               ))}
@@ -106,13 +111,21 @@ export default async function DashboardPage() {
             <h4 className="text-base font-medium text-zinc-300">各梯队资产 (影片数)</h4>
             <div className="space-y-5">
               {stats.m3.map(tier => (
-                <div className="space-y-2" key={tier.name}>
+                <div className="space-y-2" key={`asset-${tier.id}`}>
                   <div className="flex justify-between text-sm text-zinc-400">
                     <span>{tier.name}</span>
-                    <span className="font-medium text-zinc-300">{formatNumber(tier.total_video_count)} 部 ({(tier.total_video_count / stats.m1.totalAssets * 100).toFixed(1)}%)</span>
+                    <span className="font-medium text-zinc-300">
+                      {formatNumber(tier.total_video_count)} 部 (
+                      {(stats.m1.totalAssets > 0 ? (tier.total_video_count / stats.m1.totalAssets) * 100 : 0).toFixed(1)}%)
+                    </span>
                   </div>
                   <div className="h-2.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
-                    <div className={`h-full ${tierColors[tier.name] || 'bg-zinc-500'}`} style={{ width: `${(tier.total_video_count / stats.m1.totalAssets * 100)}%` }}></div>
+                    <div
+                      className={`h-full ${tierBarClass(tier.id)}`}
+                      style={{
+                        width: `${stats.m1.totalAssets > 0 ? (tier.total_video_count / stats.m1.totalAssets) * 100 : 0}%`,
+                      }}
+                    ></div>
                   </div>
                 </div>
               ))}
