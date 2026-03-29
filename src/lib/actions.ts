@@ -29,3 +29,20 @@ export async function syncMovieCounts(actressIds: string[]) {
 
   return response.json();
 }
+
+export async function startTierVideoCountSync(tierId: number) {
+  const response = await fetch('/api/tiers/sync-video-counts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ tierId }),
+  });
+
+  if (!response.ok) {
+    const err = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(err?.error ?? 'Failed to start tier video count sync.');
+  }
+
+  return response.json() as Promise<{ taskId: string }>;
+}

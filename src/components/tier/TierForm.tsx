@@ -1,9 +1,11 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { type Tier } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { createTier, updateTier } from '@/app/actions';
 
@@ -42,42 +44,60 @@ export function TierForm({ tier, onClose }: TierFormProps) {
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{tier ? 'Edit Tier' : 'Add Tier'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" required />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="video-limit" className="text-right">Video Limit</Label>
-              <Input id="video-limit" type="number" value={videoLimit} onChange={(e) => setVideoLimit(e.target.value)} className="col-span-3 font-mono" placeholder="Leave empty for unlimited" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="status" className="text-right">Status</Label>
-              <Select onValueChange={setStatus} value={status}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">现役</SelectItem>
-                  <SelectItem value="retired">引退</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button type="submit">Save</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form onSubmit={handleSubmit}>
+      <div className="grid gap-4 py-2">
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="tier-name" className="text-right text-zinc-400">
+            梯队名称
+          </Label>
+          <Input
+            id="tier-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="col-span-3 border-zinc-800 bg-zinc-900/50 text-zinc-200"
+            placeholder="例如：T1 核心"
+            required
+          />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="tier-video-limit" className="text-right text-zinc-400">
+            影片上限
+          </Label>
+          <Input
+            id="tier-video-limit"
+            type="number"
+            min={0}
+            value={videoLimit}
+            onChange={(e) => setVideoLimit(e.target.value)}
+            className="col-span-3 border-zinc-800 bg-zinc-900/50 font-mono text-zinc-200"
+            placeholder="留空表示无上限"
+          />
+        </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="tier-status" className="text-right text-zinc-400">
+            通道
+          </Label>
+          <Select onValueChange={setStatus} value={status}>
+            <SelectTrigger id="tier-status" className="col-span-3 border-zinc-800 bg-zinc-900/50 text-zinc-200">
+              <SelectValue placeholder="选择通道" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">现役</SelectItem>
+              <SelectItem value="retired">引退</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter className="gap-2 sm:gap-0">
+        <DialogClose asChild>
+          <Button type="button" variant="outline" className="border-zinc-700 bg-transparent text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100">
+            取消
+          </Button>
+        </DialogClose>
+        <Button type="submit" className="bg-zinc-100 text-zinc-950 hover:bg-white">
+          保存
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }

@@ -89,6 +89,16 @@ export async function getTiers() {
 }
 
 /**
+ * 【业务意图】梯队批量对账页：加载梯队及下属演员数量。
+ */
+export async function getTierWithActressCount(id: number) {
+  return prisma.tier.findUnique({
+    where: { id },
+    include: { _count: { select: { actresses: true } } },
+  });
+}
+
+/**
  * 【业务意图】数据检索与过滤：根据多种条件（关键词、状态、评级等）查询女优列表，支持分页和排序。
  */
 export async function getActresses(params?: { 
