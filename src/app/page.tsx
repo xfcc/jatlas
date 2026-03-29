@@ -121,9 +121,9 @@ export default function LandingPage() {
             五大核心引擎，从风控可视化、极速交互、生命周期管理、事件溯源到物理存储名册对齐，构建完整的资产管控闭环。
           </p>
           <p className="text-zinc-600 text-sm max-w-2xl mt-3">
-            产品界面截图仅收录于仓库{" "}
+            界面示例见仓库{" "}
             <span className="font-mono text-zinc-500">README.md</span>
-            的「产品截图」一节。
+            ，与各功能说明穿插编排。
           </p>
         </div>
 
