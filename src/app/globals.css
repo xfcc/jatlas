@@ -67,9 +67,7 @@
     --shadow-green-glow: rgba(34,197,94,0.8);
     --shadow-yellow-glow: rgba(234,179,8,0.8);
     --shadow-red-glow: rgba(239,68,68,0.8);
-    --radial-gradient-start: rgba(24,24,27,0.6);
-    --radial-gradient-end: rgba(9,9,11,1);
-    --grid-color: rgba(63, 63, 70, 0.1);
+    --grid-color: rgba(63, 63, 70, 0.08);
     --progress-danger-glow: rgba(239, 68, 68, 0.6);
   }
 

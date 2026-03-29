@@ -10,7 +10,6 @@ import {
   Server,
   FolderInput,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 /** 与导航、正文、页脚共用同一列宽与水平内边距 */
@@ -120,6 +119,11 @@ export default function LandingPage() {
           </h2>
           <p className="text-zinc-500 text-base max-w-2xl">
             五大核心引擎，从风控可视化、极速交互、生命周期管理、事件溯源到物理存储名册对齐，构建完整的资产管控闭环。
+          </p>
+          <p className="text-zinc-600 text-sm max-w-2xl mt-3">
+            产品界面截图仅收录于仓库{" "}
+            <span className="font-mono text-zinc-500">README.md</span>
+            的「产品截图」一节。
           </p>
         </div>
 
@@ -251,77 +255,6 @@ export default function LandingPage() {
               仍负责库存对账；仅在实际片量变化时更新「最近变动」时间戳，与管理习惯一致。
             </p>
           </div>
-        </div>
-      </section>
-
-      {/* ── Screenshots ── */}
-      <section
-        className={`${landingShell} py-16 opacity-0 animate-fade-up delay-300`}
-      >
-        <SectionLabel label="Gallery" />
-
-        <div className="mb-10">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
-            产品界面一览
-          </h2>
-          <p className="text-zinc-500 text-base max-w-2xl">
-            营销页、风控大盘、演员表与批量/存储联动能力截图（静态资源见{" "}
-            <span className="font-mono text-zinc-400">/public</span>
-            ）。
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-10 md:gap-12">
-          {(
-            [
-              {
-                src: "/index.png",
-                alt: "JATLAS 营销首页",
-                title: "营销首页",
-                caption: "产品叙事、痛点与演进路线入口。",
-              },
-              {
-                src: "/dashboard.png",
-                alt: "JATLAS 全局风控大盘",
-                title: "风控大盘",
-                caption: "生态透视、水位预警与待办。",
-              },
-              {
-                src: "/actress.png",
-                alt: "JATLAS 演员资产控制台",
-                title: "演员控制台",
-                caption: "筛选、动态水位线与单条 Emby 对账。",
-              },
-              {
-                src: "/bulkaction.png",
-                alt: "JATLAS 批量操作与存储导入",
-                title: "批量与存储联动",
-                caption: "梯队维度的批量刷新、从挂载路径扫描目录并一键录入名册。",
-              },
-            ] as const
-          ).map((item) => (
-            <figure key={item.src} className="space-y-3">
-              <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40 shadow-2xl shadow-black/40">
-                <Image
-                  src={item.src}
-                  alt={item.alt}
-                  width={1920}
-                  height={1080}
-                  className="w-full h-auto object-cover object-top"
-                  sizes="(max-width: 768px) 100vw, min(1152px, 90vw)"
-                  priority={item.src === "/index.png"}
-                />
-              </div>
-              <figcaption>
-                <span className="text-sm font-semibold text-zinc-200">
-                  {item.title}
-                </span>
-                <span className="mt-1 block text-sm text-zinc-500 leading-relaxed">
-                  {item.caption}
-                </span>
-              </figcaption>
-            </figure>
-          ))}
         </div>
       </section>
 
