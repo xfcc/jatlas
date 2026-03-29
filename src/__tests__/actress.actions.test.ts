@@ -36,13 +36,49 @@ describe('Actress Actions', () => {
   it('should update an actress', async () => {
     const actressData = { id: 1, video_count: 15 };
     const { id, ...rest } = actressData;
-    const expectedActress = { id: 1, name: 'Test Actress', ...rest, tierId: 1, emby_id: [], created_at: new Date(), updated_at: new Date(), tier: { id: 1, name: 'Test Tier', video_limit: 10, created_at: new Date(), updated_at: new Date(), status: 'active' } };
+    const beforeUpdate = {
+      id: 1,
+      name: 'Test Actress',
+      video_count: 10,
+      tierId: 1,
+      emby_id: [] as string[],
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+    const expectedActress = {
+      id: 1,
+      name: 'Test Actress',
+      ...rest,
+      tierId: 1,
+      emby_id: [] as string[],
+      created_at: new Date(),
+      updated_at: new Date(),
+      tier: {
+        id: 1,
+        name: 'Test Tier',
+        video_limit: 10,
+        created_at: new Date(),
+        updated_at: new Date(),
+        status: 'active',
+      },
+    };
 
+    prismaMock.actress.findUnique.mockResolvedValue(beforeUpdate);
     prismaMock.actress.update.mockResolvedValue(expectedActress);
+    prismaMock.assetLog.create.mockResolvedValue({} as never);
 
     const result = await updateActress(actressData);
 
-    expect(prismaMock.actress.update).toHaveBeenCalledWith({ where: { id }, data: rest, include: { tier: true } });
+    expect(prismaMock.actress.update).toHaveBeenCalledWith({
+      where: { id },
+      data: {
+        ...rest,
+        video_count: 15,
+        emby_id: undefined,
+        updated_at: expect.any(Date),
+      },
+      include: { tier: true },
+    });
     expect(require('next/cache').revalidatePath).toHaveBeenCalledWith('/');
     expect(result).toEqual({ success: true, data: expectedActress });
   });
@@ -50,7 +86,9 @@ describe('Actress Actions', () => {
   it('should delete an actress', async () => {
     const actressId = 1;
     const expectedActress = { id: actressId, name: 'deleted', video_count: 0, tierId: 1, emby_id: [], created_at: new Date(), updated_at: new Date() };
+    prismaMock.actress.findUnique.mockResolvedValue(expectedActress);
     prismaMock.actress.delete.mockResolvedValue(expectedActress);
+    prismaMock.assetLog.create.mockResolvedValue({} as never);
 
     await deleteActress(actressId);
 

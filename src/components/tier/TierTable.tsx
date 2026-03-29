@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { FolderInput, Plus, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { deleteTier } from '@/app/actions';
 import { cn } from '@/lib/utils';
 
@@ -174,6 +174,21 @@ export function TierTable({ tiers }: TierTableProps) {
                         <Link href={`/console/tiers/${tier.id}/video-count-refresh`} title="刷新本层影片数">
                           <RefreshCw className="h-4 w-4" />
                           <span className="sr-only">刷新本层影片数</span>
+                        </Link>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-zinc-400 hover:bg-zinc-800 hover:text-sky-300"
+                        asChild
+                      >
+                        <Link
+                          href={`/console/tiers/${tier.id}/import-actresses`}
+                          title="从存储导入演员"
+                        >
+                          <FolderInput className="h-4 w-4" />
+                          <span className="sr-only">从存储导入演员</span>
                         </Link>
                       </Button>
                       <Button

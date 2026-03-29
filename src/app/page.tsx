@@ -8,7 +8,9 @@ import {
   Shield,
   Database,
   Server,
+  FolderInput,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 /** 与导航、正文、页脚共用同一列宽与水平内边距 */
@@ -45,7 +47,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <div className="bg-zinc-900/50 border border-zinc-800 text-zinc-600 text-[10px] px-2.5 py-1 rounded-full tracking-[0.12em] select-none items-center gap-1.5 font-mono hidden sm:flex">
               <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-              V1.2
+              V1.3
             </div>
             <Link
               href="/console"
@@ -117,7 +119,7 @@ export default function LandingPage() {
             量化管控，取代感性判断
           </h2>
           <p className="text-zinc-500 text-base max-w-2xl">
-            四大核心引擎，从风控可视化、极速交互、生命周期管理到事件溯源，构建完整的资产管控闭环。
+            五大核心引擎，从风控可视化、极速交互、生命周期管理、事件溯源到物理存储名册对齐，构建完整的资产管控闭环。
           </p>
         </div>
 
@@ -228,6 +230,98 @@ export default function LandingPage() {
               防篡改日志表，精确记录每一笔资产变动的时间、类型与快照。支撑全局风控大盘的历史回溯与增量分析，为未来的趋势预判提供数据基底。
             </p>
           </div>
+
+          {/* Storage ↔ roster (v1.3) */}
+          <div className="bento-card md:col-span-2">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-zinc-800 flex items-center justify-center border border-zinc-700/50">
+                <FolderInput size={16} className="text-zinc-300" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zinc-100">
+                  物理存储名册对齐
+                </h3>
+                <p className="text-[11px] text-zinc-600 font-mono tracking-wider">
+                  STORAGE ROSTER SYNC · V1.3
+                </p>
+              </div>
+            </div>
+            <p className="text-zinc-400 leading-relaxed text-sm">
+              在梯队字典中扫描 NAS（AFP）或本机已挂载路径下的一级演员文件夹，与系统库内名册进行三分组比对；勾选后即可批量建档到当前梯队。Emby
+              仍负责库存对账；仅在实际片量变化时更新「最近变动」时间戳，与管理习惯一致。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Screenshots ── */}
+      <section
+        className={`${landingShell} py-16 opacity-0 animate-fade-up delay-300`}
+      >
+        <SectionLabel label="Gallery" />
+
+        <div className="mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
+            产品界面一览
+          </h2>
+          <p className="text-zinc-500 text-base max-w-2xl">
+            营销页、风控大盘、演员表与批量/存储联动能力截图（静态资源见{" "}
+            <span className="font-mono text-zinc-400">/public</span>
+            ）。
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-10 md:gap-12">
+          {(
+            [
+              {
+                src: "/index.png",
+                alt: "JATLAS 营销首页",
+                title: "营销首页",
+                caption: "产品叙事、痛点与演进路线入口。",
+              },
+              {
+                src: "/dashboard.png",
+                alt: "JATLAS 全局风控大盘",
+                title: "风控大盘",
+                caption: "生态透视、水位预警与待办。",
+              },
+              {
+                src: "/actress.png",
+                alt: "JATLAS 演员资产控制台",
+                title: "演员控制台",
+                caption: "筛选、动态水位线与单条 Emby 对账。",
+              },
+              {
+                src: "/bulkaction.png",
+                alt: "JATLAS 批量操作与存储导入",
+                title: "批量与存储联动",
+                caption: "梯队维度的批量刷新、从挂载路径扫描目录并一键录入名册。",
+              },
+            ] as const
+          ).map((item) => (
+            <figure key={item.src} className="space-y-3">
+              <div className="overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40 shadow-2xl shadow-black/40">
+                <Image
+                  src={item.src}
+                  alt={item.alt}
+                  width={1920}
+                  height={1080}
+                  className="w-full h-auto object-cover object-top"
+                  sizes="(max-width: 768px) 100vw, min(1152px, 90vw)"
+                  priority={item.src === "/index.png"}
+                />
+              </div>
+              <figcaption>
+                <span className="text-sm font-semibold text-zinc-200">
+                  {item.title}
+                </span>
+                <span className="mt-1 block text-sm text-zinc-500 leading-relaxed">
+                  {item.caption}
+                </span>
+              </figcaption>
+            </figure>
+          ))}
         </div>
       </section>
 
@@ -404,23 +498,23 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* v1.3 — In Progress */}
+            {/* v1.3 — Shipped */}
             <div className="flex gap-6 items-start">
               <div className="relative flex-shrink-0">
-                <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse" />
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 </div>
               </div>
               <div className="pb-6">
-                <span className="text-[11px] font-mono text-blue-400 tracking-[0.15em]">
-                  v1.3 — IN PROGRESS
+                <span className="text-[11px] font-mono text-emerald-400 tracking-[0.15em]">
+                  v1.3 — SHIPPED
                 </span>
                 <h3 className="text-xl font-bold text-zinc-100 mt-1 mb-2">
-                  NAS 物理层联动
+                  物理存储与名册对齐
                 </h3>
                 <p className="text-zinc-500 text-sm leading-relaxed max-w-lg">
-                  接入 NAS API
-                  监控物理硬盘使用率，基于层级规则自动生成软链接编排指令，打通逻辑层与物理存储的最后一公里。
+                  梯队页支持 AFP / 挂载路径扫描演员目录名，与库内名册三分组比对并批量导入；Emby
+                  对账仅在库存实际变化时刷新更新时间，贴合「有片量变动才算有动作」的管理节奏。
                 </p>
               </div>
             </div>
@@ -474,7 +568,7 @@ export default function LandingPage() {
       <footer className="border-t border-zinc-800/50 py-8">
         <div className={`flex items-center justify-between ${landingShell}`}>
           <span className="text-[11px] text-zinc-600 font-mono select-none">
-            JATLAS v1.2
+            JATLAS v1.3
           </span>
           <span className="text-[11px] text-zinc-700 select-none">
             Desktop-Class Web App · Physical Isolation

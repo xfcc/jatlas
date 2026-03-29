@@ -54,10 +54,6 @@ export async function POST(request: Request) {
         const videoDelta = newCount - actress.video_count;
 
         if (videoDelta === 0) {
-          await prisma.actress.update({
-            where: { id: actressId },
-            data: { updated_at: new Date() },
-          });
           successful_count++;
           tasks.set(taskId, {
             progress: i + 1,
@@ -66,7 +62,7 @@ export async function POST(request: Request) {
             lastProcessedItem: {
               name: actress.name,
               result: 'success',
-              detail: '库存无变化，已刷新更新时间',
+              detail: '库存无变化',
             },
           });
         } else {

@@ -112,10 +112,6 @@ export async function runTierVideoCountSyncTask(taskId: string, tierId: number) 
       const videoDelta = newCount - actress.video_count;
 
       if (videoDelta === 0) {
-        await prisma.actress.update({
-          where: { id: actress.id },
-          data: { updated_at: new Date() },
-        });
         const ev: TierSyncLogEvent = {
           actressId: actress.id,
           name: actress.name,
@@ -123,7 +119,7 @@ export async function runTierVideoCountSyncTask(taskId: string, tierId: number) 
           oldCount: actress.video_count,
           newCount,
           delta: 0,
-          detail: '库存无变化，已刷新更新时间',
+          detail: '库存无变化',
         };
         events.push(ev);
         flush(i + 1, { name: actress.name, result: 'success', detail: ev.detail });

@@ -98,6 +98,36 @@ export async function getTierWithActressCount(id: number) {
   });
 }
 
+export type ActressImportCompareRow = {
+  id: number;
+  name: string;
+  tierId: number;
+  tier: { id: number; name: string };
+};
+
+/**
+ * NAS 演员导入页：当前梯队 + 全系统演员（用于文件夹名与 DB 比对）。
+ */
+export async function getStorageImportPageData(tierId: number) {
+  const tier = await prisma.tier.findUnique({
+    where: { id: tierId },
+    include: { _count: { select: { actresses: true } } },
+  });
+  if (!tier) {
+    return null;
+  }
+  const actresses: ActressImportCompareRow[] = await prisma.actress.findMany({
+    select: {
+      id: true,
+      name: true,
+      tierId: true,
+      tier: { select: { id: true, name: true } },
+    },
+    orderBy: { name: 'asc' },
+  });
+  return { tier, actresses };
+}
+
 /**
  * 【业务意图】数据检索与过滤：根据多种条件（关键词、状态、评级等）查询女优列表，支持分页和排序。
  */
@@ -275,11 +305,13 @@ export async function deleteActress(id: number) {
 /**
  * 【业务意图】批量入库：通过文本粘贴，一次性创建多名女优档案，并自动去重。
  */
-export async function batchCreateActresses(data: { tierId: number; names: string }) {
+export async function batchCreateActresses(data: { tierId: number; names: string | string[] }) {
     const { tierId, names } = data;
 
     // Step 1: 解析和清洗输入的姓名列表
-    const nameList = names.split('\n').map(name => name.trim()).filter(Boolean);
+    const nameList = Array.isArray(names)
+        ? Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)))
+        : Array.from(new Set(names.split('\n').map((name) => name.trim()).filter(Boolean)));
     if (nameList.length === 0) {
         return { success: false, message: '姓名列表不能为空。' };
     }
@@ -322,7 +354,10 @@ export async function batchCreateActresses(data: { tierId: number; names: string
 
         // Step 5: 使前端缓存失效，并返回本次操作的详细报告
         revalidatePath('/');
-        
+        revalidatePath('/console');
+        revalidatePath('/console/actress');
+        revalidatePath('/console/tiers');
+
         return {
             success: true,
             data: {
@@ -390,7 +425,10 @@ export async function deleteTier(id: number) {
 export async function syncActressVideoCount(actressId: number, embyPersonIds: string[]) {
     try {
         // Step 1: 获取对账前的女优状态
-        const actressBeforeSync = await prisma.actress.findUnique({ where: { id: actressId } });
+        const actressBeforeSync = await prisma.actress.findUnique({
+            where: { id: actressId },
+            include: { tier: true },
+        });
         if (!actressBeforeSync) {
             return { success: false, message: '女优不存在，无法对账。' };
         }
@@ -402,14 +440,13 @@ export async function syncActressVideoCount(actressId: number, embyPersonIds: st
         // Step 3: 计算差值，只有当库存变化时才继续
         const videoDelta = newCount - actressBeforeSync.video_count;
         if (videoDelta === 0) {
-            // 如果库存无变化，也更新时间戳
-            const updatedActress = await prisma.actress.update({
-                where: { id: actressId },
-                data: { updated_at: new Date() },
-                include: { tier: true },
-            });
+            // 库存无变化：不写库、不更新 updated_at（仅在实际数量变化时更新时间）
             revalidatePath('/console');
-            return { success: true, data: updatedActress, message: '库存无变化，已刷新更新时间。' };
+            return {
+                success: true,
+                data: actressBeforeSync,
+                message: '库存无变化。',
+            };
         }
 
         // Step 4: 将新计数值覆写到数据库
