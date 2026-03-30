@@ -178,7 +178,12 @@ export function ActressTable({
                   checked={selectedIds.length === optimisticActresses.length && optimisticActresses.length > 0}
                 />
               </TableHead>
-              <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">演员名称 (Name)</TableHead>
+              <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">
+                <button type="button" onClick={() => handleSort('name')} className="flex items-center gap-1 hover:text-zinc-200 transition-colors">
+                  演员名称 (Name)
+                  {renderSortIcon('name')}
+                </button>
+              </TableHead>
               <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">状态 (Status)</TableHead>
               <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider">层级 (Tier)</TableHead>
               <TableHead scope="col" className="px-6 py-4 font-medium tracking-wider w-1/3">
@@ -199,7 +204,7 @@ export function ActressTable({
           <TableBody className="divide-y divide-zinc-800/50">
             {optimisticActresses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <div className="flex flex-col items-center gap-2 text-zinc-500">
                     <Ghost className="h-8 w-8" />
                     <span className="text-sm">未检索到相关资产记录</span>

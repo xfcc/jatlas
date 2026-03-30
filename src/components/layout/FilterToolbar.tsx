@@ -6,6 +6,7 @@ import { Tier } from '@prisma/client';
 import { useDebouncedCallback } from 'use-debounce';
 import { toast } from '@/hooks/use-toast';
 import { syncEmbyIds, syncMovieCounts } from '@/lib/actions';
+import { cn } from '@/lib/utils';
 
 const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: number[] }) => {
   const searchParams = useSearchParams();
@@ -19,26 +20,18 @@ const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: numbe
     } else {
       params.delete('query');
     }
+    params.delete('page');
     replace(`${pathname}?${params.toString()}`);
   }, 300);
 
-  const handleStatusChange = (status: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (status) {
-      params.set('status', status);
-    } else {
-      params.delete('status');
-    }
-    replace(`${pathname}?${params.toString()}`);
-  };
-
-  const handleTierChange = (tierId: string) => {
+  const handleTierChange = (tierId: string | null) => {
     const params = new URLSearchParams(searchParams);
     if (tierId) {
       params.set('tierId', tierId);
     } else {
       params.delete('tierId');
     }
+    params.delete('page');
     replace(`${pathname}?${params.toString()}`);
   };
 
@@ -126,47 +119,63 @@ const FilterToolbar = ({ tiers, actressIds }: { tiers: Tier[], actressIds: numbe
     }
   };
 
+  const activeTierId = searchParams.get('tierId') ?? '';
+
   return (
-    <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="w-4 h-4 text-zinc-500 group-focus-within:text-zinc-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="group relative max-w-md">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <svg className="h-4 w-4 text-zinc-500 transition-colors group-focus-within:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
           <input
             type="text"
-            placeholder="按名称搜索... (Search)"
-            className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 block w-64 pl-10 p-2.5 placeholder-zinc-600 transition-all duration-200"
+            placeholder="按名称搜索..."
+            className="block w-full rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5 pl-10 text-sm text-zinc-300 placeholder-zinc-600 transition-all duration-200 focus:border-zinc-700 focus:ring-1 focus:ring-zinc-700"
             onChange={(e) => handleSearch(e.target.value)}
             defaultValue={searchParams.get('query')?.toString()}
           />
         </div>
 
-        <select
-          className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all duration-200 hover:border-zinc-700"
-          onChange={(e) => handleStatusChange(e.target.value)}
-          defaultValue={searchParams.get('status')?.toString()}
-        >
-          <option value="">所有状态 (All Status)</option>
-          <option value="active">活跃 (Active)</option>
-          <option value="retired">已引退 (Retired)</option>
-        </select>
-
-        <select
-          className="bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-sm rounded-lg focus:ring-1 focus:ring-zinc-700 focus:border-zinc-700 p-2.5 cursor-pointer transition-all duration-200 hover:border-zinc-700"
-          onChange={(e) => handleTierChange(e.target.value)}
-          defaultValue={searchParams.get('tierId')?.toString()}
-        >
-          <option value="">所有层级 (All Tiers)</option>
-          {tiers.map((tier) => (
-            <option key={tier.id} value={tier.id.toString()}>
-              {tier.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-1 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            梯队
+          </span>
+          <button
+            type="button"
+            onClick={() => handleTierChange(null)}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200',
+              activeTierId === ''
+                ? 'border-teal-500/50 bg-teal-950/40 text-teal-200 shadow-[0_0_0_1px_rgba(20,184,166,0.2)]'
+                : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200',
+            )}
+          >
+            全部
+          </button>
+          {tiers.map((tier) => {
+            const idStr = tier.id.toString();
+            const selected = activeTierId === idStr;
+            return (
+              <button
+                key={tier.id}
+                type="button"
+                onClick={() => handleTierChange(idStr)}
+                className={cn(
+                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-200',
+                  selected
+                    ? 'border-teal-500/50 bg-teal-950/40 text-teal-200 shadow-[0_0_0_1px_rgba(20,184,166,0.2)]'
+                    : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200',
+                )}
+              >
+                {tier.name}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 border-l border-zinc-800 pl-4">
+      <div className="flex shrink-0 items-center gap-2 border-zinc-800 lg:border-l lg:pl-4">
         <button 
           onClick={handleSyncEmbyIds} 
           className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-all duration-200 tooltip-trigger disabled:opacity-50 disabled:cursor-not-allowed"

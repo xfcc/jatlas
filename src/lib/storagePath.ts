@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { normalizeComparableName } from '@/lib/textNormalize';
 
 /**
  * 将用户输入转为本地可读路径：支持 AFP URL（挂载为 /Volumes/{Share}/...）与绝对路径。
@@ -53,7 +54,7 @@ export async function listChildDirectoryNames(resolvedPath: string): Promise<str
   const entries = await fs.readdir(resolvedPath, { withFileTypes: true });
   const names = entries
     .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
-    .map((e) => e.name);
+    .map((e) => normalizeComparableName(e.name));
 
   names.sort((a, b) => a.localeCompare(b, 'ja'));
   return names;

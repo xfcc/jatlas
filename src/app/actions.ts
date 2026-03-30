@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/db';
+import { normalizeComparableName } from '@/lib/textNormalize';
 import { Prisma } from '@prisma/client';
 import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '@/lib/emby';
 import { exec } from 'child_process';
@@ -129,11 +130,10 @@ export async function getStorageImportPageData(tierId: number) {
 }
 
 /**
- * 【业务意图】数据检索与过滤：根据多种条件（关键词、状态、评级等）查询女优列表，支持分页和排序。
+ * 【业务意图】数据检索与过滤：根据关键词、梯队等条件查询女优列表，支持分页和排序。
  */
 export async function getActresses(params?: { 
     query?: string; 
-    status?: string; 
     tierId?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc'; 
@@ -141,23 +141,15 @@ export async function getActresses(params?: {
     pageSize?: number;
 }) {
     // Step 1: 解构和初始化查询参数
-    const { query, status, tierId, sortBy, sortOrder, page = 1, pageSize = 20 } = params || {};
+    const { query, tierId, sortBy, sortOrder, page = 1, pageSize = 20 } = params || {};
     const where: Prisma.ActressWhereInput = {};
 
     // Step 2: 构建动态查询条件
     if (query) {
         where.name = { contains: query, mode: 'insensitive' }; // 模糊搜索
     }
-    if (status) {
-        const tiersWithStatus = await prisma.tier.findMany({
-            where: { status: status },
-            select: { id: true },
-        });
-        const tierIds = tiersWithStatus.map(t => t.id);
-        where.tierId = { in: tierIds };
-    }
     if (tierId) {
-        where.tierId = parseInt(tierId, 10); // 按评级 ID 过滤
+        where.tierId = parseInt(tierId, 10); // 按梯队 ID 过滤
     }
 
     // Step 3: 构建排序逻辑
@@ -308,25 +300,24 @@ export async function deleteActress(id: number) {
 export async function batchCreateActresses(data: { tierId: number; names: string | string[] }) {
     const { tierId, names } = data;
 
-    // Step 1: 解析和清洗输入的姓名列表
-    const nameList = Array.isArray(names)
-        ? Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)))
-        : Array.from(new Set(names.split('\n').map((name) => name.trim()).filter(Boolean)));
+    // Step 1: 解析和清洗输入的姓名列表（NFC，与扫描目录 / DB 人工录入对齐）
+    const rawList = Array.isArray(names)
+        ? names.map((n) => n.trim()).filter(Boolean)
+        : names.split('\n').map((name) => name.trim()).filter(Boolean);
+    const nameList = Array.from(
+        new Set(rawList.map((n) => normalizeComparableName(n)).filter(Boolean)),
+    );
     if (nameList.length === 0) {
         return { success: false, message: '姓名列表不能为空。' };
     }
 
     try {
-        // Step 2: 查询数据库，找出已存在的女优，实现幂等性
-        const existingActresses = await prisma.actress.findMany({
-            where: {
-                name: { in: nameList },
-            },
-        });
+        // Step 2: 按规范化形式比对，避免 NFD 文件夹名与 NFC 库内记录不一致而重复创建
+        const allExisting = await prisma.actress.findMany({ select: { name: true } });
+        const existingNorm = new Set(allExisting.map((a) => normalizeComparableName(a.name)));
 
-        // Step 3: 计算出需要新增的姓名列表
-        const existingNames = new Set(existingActresses.map(a => a.name));
-        const newNames = nameList.filter(name => !existingNames.has(name));
+        const newNames = nameList.filter((name) => !existingNorm.has(name));
+        const skippedNorm = nameList.filter((name) => existingNorm.has(name));
 
         // Step 4: 对新姓名执行批量创建
         if (newNames.length > 0) {
@@ -362,8 +353,8 @@ export async function batchCreateActresses(data: { tierId: number; names: string
             success: true,
             data: {
                 createdCount: newNames.length,
-                skippedCount: existingNames.size,
-                skippedNames: Array.from(existingNames),
+                skippedCount: skippedNorm.length,
+                skippedNames: skippedNorm,
             },
         };
     } catch (error) {

@@ -8,6 +8,11 @@ import { batchCreateActresses, type ActressImportCompareRow } from '@/app/action
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import {
+  getImportStoragePathForTier,
+  setImportStoragePathForTier,
+} from '@/lib/importStoragePathCache';
+import { normalizeComparableName } from '@/lib/textNormalize';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -32,14 +37,22 @@ export function ImportActressesClient({ tierId, tierName, initialActresses }: Pr
     setActresses(initialActresses);
   }, [initialActresses]);
 
+  useEffect(() => {
+    setStoragePath(getImportStoragePathForTier(tierId) ?? '');
+  }, [tierId]);
+
   const groups = useMemo(() => {
-    const map = new Map(actresses.map((a) => [a.name, a]));
+    const map = new Map<string, ActressImportCompareRow>();
+    for (const a of actresses) {
+      const key = normalizeComparableName(a.name);
+      if (!map.has(key)) map.set(key, a);
+    }
     const inCurrentTier: string[] = [];
     const wrongTier: { name: string; currentTierName: string }[] = [];
     const notInSystem: string[] = [];
 
     for (const folder of folders) {
-      const row = map.get(folder);
+      const row = map.get(normalizeComparableName(folder));
       if (!row) {
         notInSystem.push(folder);
       } else if (row.tierId === tierId) {
@@ -74,6 +87,7 @@ export function ImportActressesClient({ tierId, tierName, initialActresses }: Pr
         setScanError(json.error ?? '扫描失败');
         return;
       }
+      setImportStoragePathForTier(tierId, storagePath);
       setResolvedPath(json.resolvedPath ?? null);
       setFolders(json.folders ?? []);
     } catch {
@@ -146,10 +160,14 @@ export function ImportActressesClient({ tierId, tierName, initialActresses }: Pr
         <span className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
           存储路径
         </span>
+        <p className="mt-1 text-xs text-zinc-600">
+          会为当前梯队「{tierName}」记住最后一次填写的路径（保存在本机浏览器，可随时手动修改）。
+        </p>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Input
             value={storagePath}
             onChange={(e) => setStoragePath(e.target.value)}
+            onBlur={() => setImportStoragePathForTier(tierId, storagePath)}
             placeholder="afp://... 或 /Volumes/Share/..."
             className="border-zinc-700 bg-zinc-950/80 font-mono text-sm text-zinc-200"
           />

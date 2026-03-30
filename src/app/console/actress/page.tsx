@@ -4,7 +4,6 @@ import ActressView from './ActressView';
 export default async function ConsolePage({ searchParams }: { 
   searchParams?: { 
     query?: string; 
-    status?: string; 
     tierId?: string; 
     sortBy?: string; 
     sortOrder?: 'asc' | 'desc';

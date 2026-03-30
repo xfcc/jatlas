@@ -1,4 +1,4 @@
-import { fetchActressCountFromEmby } from '@/lib/emby';
+import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '@/lib/emby';
 
 describe('Emby Fetcher', () => {
   beforeEach(() => {
@@ -51,5 +51,35 @@ describe('Emby Fetcher', () => {
     const count = await fetchActressCountFromEmby([embyPersonId]);
 
     expect(count).toBe(0);
+  });
+});
+
+describe('fetchEmbyIdsByName', () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+    process.env.EMBY_SERVER_URL = 'http://fake-emby-server:8096';
+    process.env.EMBY_API_KEY = 'fake-api-key';
+  });
+
+  it('uses /emby/Persons when the server responds 200', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ Items: [{ Id: 'p1' }, { Id: 'p2' }] }),
+    });
+
+    const ids = await fetchEmbyIdsByName('Test Actor');
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/emby\/Persons\?/),
+      expect.objectContaining({ cache: 'no-store' })
+    );
+    expect(ids).toEqual(['p1', 'p2']);
+  });
+
+  it('returns empty array for whitespace-only name without calling fetch', async () => {
+    await expect(fetchEmbyIdsByName('   ')).resolves.toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

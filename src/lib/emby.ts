@@ -42,34 +42,34 @@ export async function fetchActressCountFromEmby(embyPersonIds: string[]): Promis
 }
 
 export async function fetchEmbyIdsByName(actressName: string): Promise<string[]> {
-    const baseUrl = process.env.EMBY_SERVER_URL?.replace(/\/$/, '');
-    const apiKey = process.env.EMBY_API_KEY;
-  
-    if (!baseUrl || !apiKey) {
-      throw new Error('Emby server URL or API key is not configured in environment variables.');
-    }
-  
-    const params = new URLSearchParams({
-      searchTerm: actressName,
-      api_key: apiKey,
-    });
-  
-    const url = `${baseUrl}/emby/Persons?${params.toString()}`;
-  
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data from Emby: ${response.statusText}`);
-      }
-      const data = await response.json();
-      // Assuming the response is an array of persons under the "Items" key
-      if (data.Items && Array.isArray(data.Items)) {
-        return data.Items.map((person: EmbyPerson) => person.Id);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error fetching actress IDs from Emby by name:', error);
-      return [];
-    }
+  const baseUrl = process.env.EMBY_SERVER_URL?.replace(/\/$/, '');
+  const apiKey = process.env.EMBY_API_KEY;
+
+  if (!baseUrl || !apiKey) {
+    throw new Error('Emby server URL or API key is not configured in environment variables.');
   }
+
+  const term = actressName.trim();
+  if (!term) {
+    return [];
+  }
+
+  const params = new URLSearchParams({
+    searchTerm: term,
+    api_key: apiKey,
+  });
+
+  const url = `${baseUrl}/emby/Persons?${params.toString()}`;
+
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch data from Emby: ${response.status} ${response.statusText}`.trim());
+  }
+
+  const data: { Items?: unknown } = await response.json();
+  if (data.Items && Array.isArray(data.Items)) {
+    return data.Items.map((person: EmbyPerson) => person.Id);
+  }
+  return [];
+}
 
