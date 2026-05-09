@@ -26,6 +26,10 @@ function defaultDatabaseUrlFromConfigPath(configPath: string) {
   return `file:${normalized.slice(0, lastSlash)}/jatlas-desktop.db`;
 }
 
+function databasePathFromUrl(databaseUrl: string) {
+  return databaseUrl.startsWith('file:') ? databaseUrl.slice('file:'.length) : databaseUrl;
+}
+
 export function App() {
   const [bootstrap, setBootstrap] = useState<DesktopBootstrapState | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
@@ -37,6 +41,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [dbMode, setDbMode] = useState<'sqlite' | 'postgres'>('sqlite');
   const [databaseUrl, setDatabaseUrl] = useState(initialDatabaseUrl);
+  const [selectedDatabasePath, setSelectedDatabasePath] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [embyServerUrl, setEmbyServerUrl] = useState('');
   const [embyApiKey, setEmbyApiKey] = useState('');
@@ -106,7 +111,9 @@ export function App() {
       const state = await window.desktopApi.getBootstrapState();
       setBootstrap(state);
       if (!state.configured && state.configPath) {
-        setDatabaseUrl((current) => current === initialDatabaseUrl ? defaultDatabaseUrlFromConfigPath(state.configPath) : current);
+        const defaultUrl = defaultDatabaseUrlFromConfigPath(state.configPath);
+        setDatabaseUrl((current) => current === initialDatabaseUrl ? defaultUrl : current);
+        setSelectedDatabasePath((current) => current || databasePathFromUrl(defaultUrl));
       }
       if (state.configured && state.initialized) {
         const auth = await window.desktopApi.getAuthState();
@@ -365,6 +372,15 @@ export function App() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const onSelectDatabaseFile = async () => {
+    setError(null);
+    const result = await window.desktopApi.selectDatabaseFile();
+    if (result.canceled) return;
+    setDbMode('sqlite');
+    setDatabaseUrl(result.databaseUrl);
+    setSelectedDatabasePath(result.filePath);
   };
 
   const onLogin = async () => {
@@ -639,13 +655,18 @@ export function App() {
             </select>
           </label>
           <label>
-            Database URL
-            <input
-              style={{ width: '100%' }}
-              value={databaseUrl}
-              onChange={(e) => setDatabaseUrl(e.target.value)}
-              placeholder="file:./jatlas-desktop.db"
-            />
+            Database File
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                readOnly
+                style={{ width: '100%' }}
+                value={selectedDatabasePath || databasePathFromUrl(databaseUrl)}
+                placeholder="Select an existing .db file or keep the default location"
+              />
+              <button type="button" onClick={onSelectDatabaseFile} style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                Select DB
+              </button>
+            </div>
           </label>
           <label>
             Admin Password

@@ -36,6 +36,7 @@ export const IPC_CHANNELS = {
   CANCEL_SYNC_TASK: 'desktop:cancel-sync-task',
   SCAN_STORAGE: 'desktop:scan-storage',
   BATCH_IMPORT_STORAGE_FOLDERS: 'desktop:batch-import-storage-folders',
+  SELECT_DATABASE_FILE: 'desktop:select-database-file',
   OPEN_USER_DATA_FOLDER: 'desktop:open-user-data-folder',
 } as const;
 
@@ -131,6 +132,10 @@ export type IpcInvokeMap = {
   [IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS]: {
     args: [number, string[]];
     result: DesktopStorageBatchImportResult;
+  };
+  [IPC_CHANNELS.SELECT_DATABASE_FILE]: {
+    args: [];
+    result: { canceled: true } | { canceled: false; filePath: string; databaseUrl: string };
   };
   [IPC_CHANNELS.OPEN_USER_DATA_FOLDER]: {
     args: [];

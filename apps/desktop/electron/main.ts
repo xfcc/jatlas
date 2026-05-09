@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { IPC_CHANNELS } from '../shared/ipc';
@@ -34,6 +34,10 @@ import {
 } from '../core/desktopTaskSyncService';
 
 let isDesktopAuthenticated = false;
+
+function databaseUrlFromFilePath(filePath: string) {
+  return `file:${filePath.replace(/\\/g, '/')}`;
+}
 
 function ensureAuthenticated() {
   if (!isDesktopAuthenticated) {
@@ -240,6 +244,26 @@ function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS, async (_event, tierId: number, folderNames: string[]) => {
     ensureAuthenticated();
     return importDesktopTierFoldersAsActresses(tierId, folderNames);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SELECT_DATABASE_FILE, async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Select JATLAS database file',
+      properties: ['openFile'],
+      filters: [
+        { name: 'SQLite database', extensions: ['db', 'sqlite', 'sqlite3'] },
+        { name: 'All files', extensions: ['*'] },
+      ],
+    });
+    const filePath = result.filePaths[0];
+    if (result.canceled || !filePath) {
+      return { canceled: true as const };
+    }
+    return {
+      canceled: false as const,
+      filePath,
+      databaseUrl: databaseUrlFromFilePath(filePath),
+    };
   });
 
   ipcMain.handle(IPC_CHANNELS.OPEN_USER_DATA_FOLDER, async () => {

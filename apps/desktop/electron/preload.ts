@@ -25,6 +25,7 @@ const IPC_CHANNELS = {
   CANCEL_SYNC_TASK: 'desktop:cancel-sync-task',
   SCAN_STORAGE: 'desktop:scan-storage',
   BATCH_IMPORT_STORAGE_FOLDERS: 'desktop:batch-import-storage-folders',
+  SELECT_DATABASE_FILE: 'desktop:select-database-file',
   OPEN_USER_DATA_FOLDER: 'desktop:open-user-data-folder',
 } as const;
 
@@ -88,6 +89,7 @@ type DesktopApi = {
     tierId: IpcInvokeMap[typeof IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS]['args'][0],
     folderNames: IpcInvokeMap[typeof IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS]['args'][1],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS]['result']>;
+  selectDatabaseFile: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SELECT_DATABASE_FILE]['result']>;
   openUserDataFolder: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.OPEN_USER_DATA_FOLDER]['result']>;
 };
 
@@ -116,6 +118,7 @@ const desktopApi: DesktopApi = {
   scanStorage: (tierId, path) => ipcRenderer.invoke(IPC_CHANNELS.SCAN_STORAGE, tierId, path),
   batchImportStorageFolders: (tierId, folderNames) =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS, tierId, folderNames),
+  selectDatabaseFile: () => ipcRenderer.invoke(IPC_CHANNELS.SELECT_DATABASE_FILE),
   openUserDataFolder: () => ipcRenderer.invoke(IPC_CHANNELS.OPEN_USER_DATA_FOLDER),
 };
 

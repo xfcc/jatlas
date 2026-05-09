@@ -38,6 +38,7 @@ declare global {
       cancelSyncTask: (taskId: string) => Promise<{ ok: true }>;
       scanStorage: (tierId: number, path: string) => Promise<{ resolvedPath: string; folders: string[] }>;
       batchImportStorageFolders: (tierId: number, folderNames: string[]) => Promise<DesktopStorageBatchImportResult>;
+      selectDatabaseFile: () => Promise<{ canceled: true } | { canceled: false; filePath: string; databaseUrl: string }>;
       openUserDataFolder: () => Promise<{ ok: true }>;
     };
   }
