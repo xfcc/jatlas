@@ -1,9 +1,14 @@
 const LS_KEY = 'jatlas:import-actress-storage-paths';
 
-function getLocalStorage(): Storage | null {
+type LocalStorageLike = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+};
+
+function getLocalStorage(): LocalStorageLike | null {
   if (typeof globalThis === 'undefined') return null;
   try {
-    return (globalThis as unknown as { localStorage?: Storage }).localStorage ?? null;
+    return (globalThis as unknown as { localStorage?: LocalStorageLike }).localStorage ?? null;
   } catch {
     return null;
   }

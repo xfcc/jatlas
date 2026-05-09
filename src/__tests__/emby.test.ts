@@ -72,8 +72,7 @@ describe('fetchEmbyIdsByName', () => {
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/\/emby\/Persons\?/),
-      expect.objectContaining({ cache: 'no-store' })
+      expect.stringMatching(/\/emby\/Persons\?/)
     );
     expect(ids).toEqual(['p1', 'p2']);
   });

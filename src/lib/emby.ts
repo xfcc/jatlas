@@ -2,6 +2,23 @@ interface EmbyPerson {
   Id: string;
 }
 
+interface EmbyItemCountResponse {
+  TotalRecordCount?: number;
+}
+
+interface EmbyPersonSearchResponse {
+  Items?: unknown;
+}
+
+function isEmbyPerson(value: unknown): value is EmbyPerson {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'Id' in value &&
+    typeof (value as { Id?: unknown }).Id === 'string'
+  );
+}
+
 export async function fetchActressCountFromEmby(embyPersonIds: string[]): Promise<number> {
   if (embyPersonIds.length === 0) {
     return 0;
@@ -29,7 +46,7 @@ export async function fetchActressCountFromEmby(embyPersonIds: string[]): Promis
         console.error(`Failed to fetch data from Emby for ID ${personId}: ${response.statusText}`);
         return 0; // Return 0 for this ID if fetch fails
       }
-      const data = await response.json();
+      const data = (await response.json()) as EmbyItemCountResponse;
       return data.TotalRecordCount || 0;
     } catch (error) {
       console.error(`Error fetching actress count from Emby for ID ${personId}:`, error);
@@ -38,7 +55,7 @@ export async function fetchActressCountFromEmby(embyPersonIds: string[]): Promis
   }));
 
   // Sum up all the counts
-  return counts.reduce((total, count) => total + count, 0);
+  return counts.reduce((total: number, count: number) => total + count, 0);
 }
 
 export async function fetchEmbyIdsByName(actressName: string): Promise<string[]> {
@@ -61,15 +78,14 @@ export async function fetchEmbyIdsByName(actressName: string): Promise<string[]>
 
   const url = `${baseUrl}/emby/Persons?${params.toString()}`;
 
-  const response = await fetch(url, { cache: 'no-store' });
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to fetch data from Emby: ${response.status} ${response.statusText}`.trim());
   }
 
-  const data: { Items?: unknown } = await response.json();
+  const data = (await response.json()) as EmbyPersonSearchResponse;
   if (data.Items && Array.isArray(data.Items)) {
-    return data.Items.map((person: EmbyPerson) => person.Id);
+    return data.Items.filter(isEmbyPerson).map((person) => person.Id);
   }
   return [];
 }
-

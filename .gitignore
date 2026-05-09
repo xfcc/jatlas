@@ -7,3 +7,8 @@ node_modules
 backups/
 .env
 .vercel/
+apps/desktop/dist/
+apps/desktop/dist-electron/
+*.db
+*.sqlite
+release/

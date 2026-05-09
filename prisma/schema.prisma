@@ -2,11 +2,12 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -28,23 +29,17 @@ model Actress {
   tier        Tier     @relation(fields: [tierId], references: [id])
   tierId      Int
   video_count Int
-  /// 演员ID
-  emby_id     String[]
+  /// 演员ID 列表（SQLite 下使用 JSON 字符串存储）
+  emby_id     String   @default("[]")
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-}
-
-enum AssetActionType {
-  CREATE
-  DELETE
-  UPDATE
 }
 
 model AssetLog {
   id           Int             @id @default(autoincrement())
   actress_id   Int
   actress_name String
-  action_type  AssetActionType
+  action_type  String
   video_delta  Int
   created_at   DateTime        @default(now())
   updated_at   DateTime        @updatedAt

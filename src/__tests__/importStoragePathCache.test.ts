@@ -3,6 +3,12 @@ import {
   setImportStoragePathForTier,
 } from '@/lib/importStoragePathCache';
 
+interface LocalStorageMock {
+  clear: () => void;
+}
+
+declare const localStorage: LocalStorageMock;
+
 const memory: Record<string, string> = {};
 
 describe('importStoragePathCache', () => {

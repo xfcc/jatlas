@@ -48,6 +48,7 @@ async function main() {
                 name: actressData.name,
                 video_count: actressData.video_count,
                 tierId: randomTierId,
+                emby_id: '[]',
             },
         });
         console.log(`Created or updated actress: ${actress.name} with id: ${actress.id}`);
