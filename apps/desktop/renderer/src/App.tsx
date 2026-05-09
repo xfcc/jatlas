@@ -13,7 +13,7 @@ import type { DesktopHealthSnapshot } from '../../core/desktopProbeService';
 import type { DesktopRuntimeConfig } from '../../core/configService';
 import type { TaskState } from '../../core/desktopTaskStore';
 
-type WorkspaceTab = 'dashboard' | 'tiers' | 'actresses' | 'storage';
+type WorkspaceTab = 'dashboard' | 'tiers' | 'actresses' | 'storage' | 'settings';
 
 const initialDatabaseUrl = 'file:./jatlas-desktop.db';
 
@@ -30,21 +30,24 @@ function databasePathFromUrl(databaseUrl: string) {
   return databaseUrl.startsWith('file:') ? databaseUrl.slice('file:'.length) : databaseUrl;
 }
 
+function tierStatusText(status: string) {
+  return status === 'retired' ? '引退' : '现役';
+}
+
 export function App() {
   const [bootstrap, setBootstrap] = useState<DesktopBootstrapState | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
-  const [loginPassword, setLoginPassword] = useState('');
   const [snapshot, setSnapshot] = useState<DesktopHealthSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dbMode, setDbMode] = useState<'sqlite' | 'postgres'>('sqlite');
   const [databaseUrl, setDatabaseUrl] = useState(initialDatabaseUrl);
   const [selectedDatabasePath, setSelectedDatabasePath] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
   const [embyServerUrl, setEmbyServerUrl] = useState('');
   const [embyApiKey, setEmbyApiKey] = useState('');
+  const [storageRootPath, setStorageRootPath] = useState('');
+  const [settingsMessage, setSettingsMessage] = useState('');
   const [tiers, setTiers] = useState<DesktopTier[]>([]);
   const [actresses, setActresses] = useState<DesktopActress[]>([]);
   const [query, setQuery] = useState('');
@@ -118,6 +121,15 @@ export function App() {
       if (state.configured && state.initialized) {
         const auth = await window.desktopApi.getAuthState();
         setAuthenticated(auth.authenticated);
+        const config = await window.desktopApi.getRuntimeConfig();
+        if (config) {
+          setDatabaseUrl(config.databaseUrl);
+          setSelectedDatabasePath(databasePathFromUrl(config.databaseUrl));
+          setEmbyServerUrl(config.embyServerUrl ?? '');
+          setEmbyApiKey(config.embyApiKey ?? '');
+          setStorageRootPath(config.storageRootPath ?? '');
+          setStoragePathInput(config.storageRootPath ?? '');
+        }
       }
     })();
   }, []);
@@ -165,7 +177,7 @@ export function App() {
           await loadTiersOnly();
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load data');
+        setError(e instanceof Error ? e.message : '加载数据失败');
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,7 +197,7 @@ export function App() {
         await loadTiersOnly();
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Refresh failed');
+      setError(e instanceof Error ? e.message : '刷新失败');
     } finally {
       setLoading(false);
     }
@@ -197,7 +209,7 @@ export function App() {
   const beginPollTask = (taskId: string) => {
     stopPoll();
     setActivePollingTaskId(taskId);
-    setSyncTaskState({ progress: 0, total: 0, status: 'starting…' });
+    setSyncTaskState({ progress: 0, total: 0, status: '启动中...' });
     const tick = async () => {
       try {
         const t = await window.desktopApi.getSyncTask(taskId);
@@ -224,7 +236,7 @@ export function App() {
     try {
       await window.desktopApi.cancelSyncTask(id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Cancel failed');
+      setError(e instanceof Error ? e.message : '取消失败');
     }
   };
 
@@ -238,7 +250,7 @@ export function App() {
       const { taskId } = await window.desktopApi.startSyncMovieCounts(ids);
       beginPollTask(taskId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Retry failed');
+      setError(e instanceof Error ? e.message : '重试失败');
     }
   };
 
@@ -254,7 +266,7 @@ export function App() {
 
   const onSyncEmbyIds = async () => {
     if (selectedActressIds.length === 0) {
-      setError('Select at least one actress.');
+      setError('请至少选择一位演员。');
       return;
     }
     setError(null);
@@ -262,13 +274,13 @@ export function App() {
       const { taskId } = await window.desktopApi.startSyncEmbyIds(selectedActressIds);
       beginPollTask(taskId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sync failed');
+      setError(e instanceof Error ? e.message : '同步失败');
     }
   };
 
   const onSyncMovieCounts = async () => {
     if (selectedActressIds.length === 0) {
-      setError('Select at least one actress.');
+      setError('请至少选择一位演员。');
       return;
     }
     setError(null);
@@ -276,7 +288,7 @@ export function App() {
       const { taskId } = await window.desktopApi.startSyncMovieCounts(selectedActressIds);
       beginPollTask(taskId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sync failed');
+      setError(e instanceof Error ? e.message : '同步失败');
     }
   };
 
@@ -286,13 +298,13 @@ export function App() {
       const { taskId } = await window.desktopApi.startTierVideoSync(tierSyncId);
       beginPollTask(taskId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Tier sync failed');
+      setError(e instanceof Error ? e.message : '梯队同步失败');
     }
   };
 
   const onScanStorage = async () => {
     if (!storagePathInput.trim()) {
-      setError('Enter a storage path or AFP URL.');
+      setError('请输入存储目录路径。');
       return;
     }
     setLoading(true);
@@ -305,7 +317,7 @@ export function App() {
       setStorageResolved(result.resolvedPath);
       setStorageFolders(result.folders);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Scan failed');
+      setError(e instanceof Error ? e.message : '扫描失败');
     } finally {
       setLoading(false);
     }
@@ -313,7 +325,7 @@ export function App() {
 
   const onBatchImportStorageFolders = async () => {
     if (!storageFolders || storageFolders.length === 0) {
-      setError('Scan folders first, then import.');
+      setError('请先扫描文件夹，再执行导入。');
       return;
     }
     setStorageImporting(true);
@@ -335,7 +347,7 @@ export function App() {
         await Promise.all([loadTiersOnly(), loadDashboardData()]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Batch import failed');
+      setError(e instanceof Error ? e.message : '批量导入失败');
     } finally {
       setStorageImporting(false);
     }
@@ -348,7 +360,7 @@ export function App() {
       const result = await window.desktopApi.getHealthSnapshot();
       setSnapshot(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch desktop health snapshot');
+      setError(e instanceof Error ? e.message : '获取桌面端诊断信息失败');
     } finally {
       setLoading(false);
     }
@@ -359,16 +371,14 @@ export function App() {
     setError(null);
     try {
       const config: DesktopRuntimeConfig = {
-        dbMode,
+        dbMode: 'sqlite',
         databaseUrl,
-        adminPassword: adminPassword || undefined,
-        embyServerUrl: embyServerUrl || undefined,
-        embyApiKey: embyApiKey || undefined,
       };
       const result = await window.desktopApi.saveConfigAndInit(config);
       setBootstrap(result);
+      setAuthenticated(result.initialized);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save desktop configuration');
+      setError(e instanceof Error ? e.message : '保存桌面配置失败');
     } finally {
       setSaving(false);
     }
@@ -378,41 +388,41 @@ export function App() {
     setError(null);
     const result = await window.desktopApi.selectDatabaseFile();
     if (result.canceled) return;
-    setDbMode('sqlite');
     setDatabaseUrl(result.databaseUrl);
     setSelectedDatabasePath(result.filePath);
   };
 
-  const onLogin = async () => {
-    setSubmitting(true);
+  const onSelectStorageFolder = async () => {
     setError(null);
-    try {
-      const result = await window.desktopApi.login(loginPassword);
-      if (!result.authenticated) {
-        setError(result.message ?? 'Login failed.');
-        return;
-      }
-      setAuthenticated(true);
-      setTab('dashboard');
-      await loadDashboardData();
-      await loadTiersOnly();
-      setLoginPassword('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Login failed.');
-    } finally {
-      setSubmitting(false);
-    }
+    const result = await window.desktopApi.selectStorageFolder();
+    if (result.canceled) return;
+    setStorageRootPath(result.folderPath);
+    setStoragePathInput((current) => current || result.folderPath);
   };
 
-  const onLogout = async () => {
-    await window.desktopApi.logout();
-    setAuthenticated(false);
-    setActresses([]);
-    setTiers([]);
-    setEditingId(null);
-    setDashboardStats(null);
-    setAssetChart(null);
-    setTierEditingId(null);
+  const onSaveRuntimeSettings = async () => {
+    setSaving(true);
+    setError(null);
+    setSettingsMessage('');
+    try {
+      const config: DesktopRuntimeConfig = {
+        dbMode: 'sqlite',
+        databaseUrl,
+        embyServerUrl: embyServerUrl.trim() || undefined,
+        embyApiKey: embyApiKey.trim() || undefined,
+        storageRootPath: storageRootPath.trim() || undefined,
+      };
+      const saved = await window.desktopApi.saveRuntimeConfig(config);
+      setEmbyServerUrl(saved.embyServerUrl ?? '');
+      setEmbyApiKey(saved.embyApiKey ?? '');
+      setStorageRootPath(saved.storageRootPath ?? '');
+      setStoragePathInput(saved.storageRootPath ?? storagePathInput);
+      setSettingsMessage('设置已保存。');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '保存设置失败');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetTierForm = () => {
@@ -432,7 +442,7 @@ export function App() {
   const onSubmitTier = async () => {
     const name = tierName.trim();
     if (!name) {
-      setError('Tier name is required.');
+      setError('请填写梯队名称。');
       return;
     }
     const limitTrim = tierLimitRaw.trim();
@@ -440,7 +450,7 @@ export function App() {
     if (limitTrim !== '') {
       const n = Number(limitTrim);
       if (!Number.isFinite(n) || n < 0) {
-        setError('Video limit must be a non-negative number or empty for unlimited.');
+        setError('影片上限必须是非负数字；留空表示不限制。');
         return;
       }
       video_limit = Math.floor(n);
@@ -492,14 +502,14 @@ export function App() {
     } catch (e) {
       setTiers(previousTiers);
       setActresses(previousActresses);
-      setError(e instanceof Error ? e.message : 'Failed to save tier');
+      setError(e instanceof Error ? e.message : '保存梯队失败');
     } finally {
       setSubmitting(false);
     }
   };
 
   const onDeleteTier = async (id: number) => {
-    if (!window.confirm('Delete this tier? Actresses must be moved first.')) {
+    if (!window.confirm('确认删除这个梯队？请先移走该梯队下的演员。')) {
       return;
     }
     setSubmitting(true);
@@ -514,7 +524,7 @@ export function App() {
       }
     } catch (e) {
       setTiers(previousTiers);
-      setError(e instanceof Error ? e.message : 'Failed to delete tier');
+      setError(e instanceof Error ? e.message : '删除梯队失败');
     } finally {
       setSubmitting(false);
     }
@@ -532,7 +542,7 @@ export function App() {
 
   const onSubmitActress = async () => {
     if (!name.trim()) {
-      setError('Name is required.');
+      setError('请填写演员名称。');
       return;
     }
     setSubmitting(true);
@@ -547,7 +557,7 @@ export function App() {
         .filter(Boolean),
     };
 
-    const tierNameForInput = tiers.find((t) => t.id === input.tierId)?.name ?? `Tier #${input.tierId}`;
+    const tierNameForInput = tiers.find((t) => t.id === input.tierId)?.name ?? `梯队 #${input.tierId}`;
     const previousActresses = actresses;
     const tempId = editingId === null ? nextTempId() : null;
     const optimisticRow: DesktopActress = {
@@ -594,7 +604,7 @@ export function App() {
       resetForm();
     } catch (e) {
       setActresses(previousActresses);
-      setError(e instanceof Error ? e.message : 'Failed to save actress');
+      setError(e instanceof Error ? e.message : '保存演员失败');
     } finally {
       setSubmitting(false);
     }
@@ -621,7 +631,7 @@ export function App() {
       }
     } catch (e) {
       setActresses(previousActresses);
-      setError(e instanceof Error ? e.message : 'Failed to delete actress');
+      setError(e instanceof Error ? e.message : '删除演员失败');
     } finally {
       setSubmitting(false);
     }
@@ -633,7 +643,7 @@ export function App() {
     try {
       await loadWorkspaceData(query);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load actresses');
+      setError(e instanceof Error ? e.message : '加载演员失败');
     } finally {
       setLoading(false);
     }
@@ -642,57 +652,27 @@ export function App() {
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
       <main className="app-shell setup-shell desktop-surface" style={{ fontFamily: 'sans-serif', padding: 24, maxWidth: 780 }}>
-        <h1 style={{ marginTop: 0 }}>JATLAS Desktop - First Run Setup</h1>
+        <h1 style={{ marginTop: 0 }}>JATLAS 初始设置</h1>
         <p style={{ color: '#4b5563' }}>
-          {bootstrap?.message ?? 'Checking bootstrap state...'}
+          请选择 JATLAS 使用的 SQLite 数据库文件。已有数据可以直接选择旧的 .db 文件；新建数据可以先选择准备好的空数据库文件。
         </p>
         <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
           <label>
-            DB Mode
-            <select value={dbMode} onChange={(e) => setDbMode(e.target.value as 'sqlite' | 'postgres')}>
-              <option value="sqlite">SQLite (recommended for desktop)</option>
-              <option value="postgres">PostgreSQL</option>
-            </select>
-          </label>
-          <label>
-            Database File
+            数据库文件
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <input
                 readOnly
                 style={{ width: '100%' }}
-                value={selectedDatabasePath || databasePathFromUrl(databaseUrl)}
-                placeholder="Select an existing .db file or keep the default location"
+                value={selectedDatabasePath}
+                placeholder="请选择 .db / .sqlite / .sqlite3 文件"
               />
               <button type="button" onClick={onSelectDatabaseFile} style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                Select DB
+                选择数据库
               </button>
             </div>
           </label>
-          <label>
-            Admin Password
-            <input
-              style={{ width: '100%' }}
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              placeholder="optional"
-              type="password"
-            />
-          </label>
-          <label>
-            Emby Server URL (optional)
-            <input style={{ width: '100%' }} value={embyServerUrl} onChange={(e) => setEmbyServerUrl(e.target.value)} />
-          </label>
-          <label>
-            Emby API Key (optional)
-            <input
-              style={{ width: '100%' }}
-              value={embyApiKey}
-              onChange={(e) => setEmbyApiKey(e.target.value)}
-              type="password"
-            />
-          </label>
-          <button onClick={onSaveConfig} disabled={saving || !databaseUrl.trim()} style={{ padding: '8px 12px' }}>
-            {saving ? 'Saving...' : 'Save Config & Initialize DB'}
+          <button onClick={onSaveConfig} disabled={saving || !selectedDatabasePath.trim()} style={{ padding: '8px 12px' }}>
+            {saving ? '正在初始化...' : '进入 JATLAS'}
           </button>
           {error ? <p style={{ color: '#dc2626' }}>{error}</p> : null}
         </div>
@@ -700,40 +680,13 @@ export function App() {
     );
   }
 
-  if (!authenticated) {
-    return (
-      <main className="app-shell login-shell desktop-surface" style={{ fontFamily: 'sans-serif', padding: 24, maxWidth: 420 }}>
-        <h1 style={{ marginTop: 0 }}>JATLAS Desktop Login</h1>
-        <p style={{ color: '#4b5563' }}>{bootstrap.message}</p>
-        <label>
-          Admin Password
-          <input
-            style={{ width: '100%', marginTop: 8 }}
-            type="password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                void onLogin();
-              }
-            }}
-          />
-        </label>
-        <button style={{ marginTop: 12, padding: '8px 12px' }} onClick={onLogin} disabled={submitting}>
-          {submitting ? 'Signing in...' : 'Sign In'}
-        </button>
-        {error ? <p style={{ color: '#dc2626' }}>{error}</p> : null}
-      </main>
-    );
-  }
-
   return (
     <main className="app-shell workspace-shell" style={{ fontFamily: 'sans-serif', padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>JATLAS Desktop Workspace</h1>
-      <p style={{ color: '#4b5563' }}>{bootstrap.message}</p>
+      <h1 style={{ marginTop: 0 }}>JATLAS 资产控制台</h1>
+      <p style={{ color: '#4b5563' }}>演员分级台账、Emby 对账与 NAS 存储扫描。</p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-        {(['dashboard', 'tiers', 'actresses', 'storage'] as const).map((key) => (
+        {(['dashboard', 'tiers', 'actresses', 'storage', 'settings'] as const).map((key) => (
           <button
             key={key}
             className={tab === key ? 'workspace-tab active' : 'workspace-tab'}
@@ -746,47 +699,48 @@ export function App() {
             }}
           >
             {key === 'dashboard'
-              ? 'Dashboard'
+              ? '总览'
               : key === 'tiers'
-                ? 'Tiers'
+                ? '梯队'
                 : key === 'actresses'
-                  ? 'Actresses'
-                  : 'Storage'}
+                  ? '演员'
+                  : key === 'storage'
+                    ? '存储扫描'
+                    : '设置'}
           </button>
         ))}
         <button className="workspace-tool" onClick={() => void refreshCurrentTab()} disabled={loading}>
-          {loading ? 'Loading...' : 'Refresh'}
+          {loading ? '刷新中...' : '刷新'}
         </button>
         <button className="workspace-tool" onClick={() => void onFetchSnapshot()} disabled={loading}>
-          Health
+          诊断
         </button>
-        <button className="workspace-tool" onClick={() => void onLogout()}>Logout</button>
         <button className="workspace-tool" type="button" onClick={() => void window.desktopApi.openUserDataFolder()}>
-          Open app data folder
+          打开数据目录
         </button>
       </div>
 
       {syncTaskState ? (
         <section style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-            <strong>Background task:</strong> {syncTaskState.status}{' '}
+            <strong>后台任务：</strong> {syncTaskState.status}{' '}
             {syncTaskState.total > 0 ? `(${syncTaskState.progress}/${syncTaskState.total})` : null}
             {activePollingTaskId && !isSyncTaskTerminal(syncTaskState) ? (
               <button type="button" onClick={() => void onCancelSyncTask()}>
-                Cancel task
+                取消任务
               </button>
             ) : null}
             {isSyncTaskTerminal(syncTaskState) &&
             (syncTaskState.summary?.error ?? 0) > 0 &&
             (syncTaskState.events?.length ?? 0) > 0 ? (
               <button type="button" onClick={() => void onRetryFailedTierSync()}>
-                Retry failed ({syncTaskState.summary?.error})
+                重试失败项 ({syncTaskState.summary?.error})
               </button>
             ) : null}
           </div>
           {syncTaskState.lastProcessedItem ? (
             <div style={{ marginTop: 8, fontSize: 14 }}>
-              Last: {syncTaskState.lastProcessedItem.name} — {syncTaskState.lastProcessedItem.detail}
+              最近处理：{syncTaskState.lastProcessedItem.name} - {syncTaskState.lastProcessedItem.detail}
             </div>
           ) : null}
           {syncTaskState.summary ? (
@@ -799,49 +753,49 @@ export function App() {
 
       {tab === 'dashboard' && dashboardStats && assetChart ? (
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ marginTop: 0 }}>Overview</h2>
+          <h2 style={{ marginTop: 0 }}>资产总览</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Total actresses</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>演员总数</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{dashboardStats.m1.totalCount}</div>
             </div>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Active / Retired</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>现役 / 引退</div>
               <div style={{ fontSize: 18 }}>
                 {dashboardStats.m1.activeCount} / {dashboardStats.m1.retiredCount}
               </div>
             </div>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Total videos</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>影片总量</div>
               <div style={{ fontSize: 24, fontWeight: 700 }}>{dashboardStats.m1.totalAssets}</div>
             </div>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Over capacity (units)</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>超额资产</div>
               <div style={{ fontSize: 18 }}>{dashboardStats.m1.overloadedAssets}</div>
             </div>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Pending Emby link</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>待绑定 Emby</div>
               <div style={{ fontSize: 18 }}>{dashboardStats.m2.pendingEmbyLink}</div>
             </div>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Pending management</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>待治理项</div>
               <div style={{ fontSize: 18 }}>{dashboardStats.m2.pendingManagement}</div>
             </div>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Stale update (30d)</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>30 天未更新</div>
               <div style={{ fontSize: 18 }}>{dashboardStats.m2.pendingUpdate}</div>
             </div>
           </div>
 
-          <h3>Tier distribution</h3>
+          <h3>梯队分布</h3>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Tier</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Count</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Videos</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>%</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>梯队</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>人数</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>影片</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>占比</th>
                 </tr>
               </thead>
               <tbody>
@@ -857,12 +811,12 @@ export function App() {
             </table>
           </section>
 
-          <h3>Asset log (6 months)</h3>
+          <h3>资产日志（近 6 个月）</h3>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Month</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>月份</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>收录扩张</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>资产入库</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>资产出库</th>
@@ -883,40 +837,39 @@ export function App() {
         </div>
       ) : null}
 
-      {tab === 'dashboard' && !dashboardStats ? <p>Loading dashboard...</p> : null}
+      {tab === 'dashboard' && !dashboardStats ? <p>正在加载总览...</p> : null}
 
       {tab === 'tiers' ? (
         <>
           <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <h3 style={{ marginTop: 0 }}>
-              {tierEditingId === null ? 'Create tier' : `Edit tier #${tierEditingId}`}
+              {tierEditingId === null ? '新增梯队' : `编辑梯队 #${tierEditingId}`}
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px', gap: 8 }}>
-              <input placeholder="Name" value={tierName} onChange={(e) => setTierName(e.target.value)} />
+              <input placeholder="梯队名称" value={tierName} onChange={(e) => setTierName(e.target.value)} />
               <input
-                placeholder="Video limit (empty = ∞)"
+                placeholder="影片上限（空=不限）"
                 value={tierLimitRaw}
                 onChange={(e) => setTierLimitRaw(e.target.value)}
               />
               <select value={tierStatus} onChange={(e) => setTierStatus(e.target.value)}>
-                <option value="active">active</option>
-                <option value="retired">retired</option>
+                <option value="active">现役</option>
+                <option value="retired">引退</option>
               </select>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button onClick={() => void onSubmitTier()} disabled={submitting}>
-                {submitting ? 'Saving...' : tierEditingId === null ? 'Create' : 'Update'}
+                {submitting ? '保存中...' : tierEditingId === null ? '新增' : '更新'}
               </button>
               <button onClick={resetTierForm} disabled={submitting}>
-                Reset
+                重置
               </button>
             </div>
           </section>
           <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0 }}>Emby: sync video counts for tier</h3>
+            <h3 style={{ marginTop: 0 }}>Emby：按梯队同步影片数量</h3>
             <p style={{ marginTop: 0, color: '#6b7280', fontSize: 14 }}>
-              Uses EMBY_SERVER_URL / EMBY_API_KEY from your saved desktop config. Shows per-actress log when
-              finished.
+              使用“设置”页保存的 Emby 地址和 API Key，同步完成后会显示每个演员的处理记录。
             </p>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <select value={tierSyncId} onChange={(e) => setTierSyncId(Number(e.target.value))}>
@@ -927,7 +880,7 @@ export function App() {
                 ))}
               </select>
               <button type="button" onClick={() => void onTierBulkVideoSync()}>
-                Start tier sync
+                开始同步
               </button>
             </div>
           </section>
@@ -936,11 +889,11 @@ export function App() {
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
                   <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Name</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Limit</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Status</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Actresses</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Actions</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>名称</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>上限</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>状态</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>演员数</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -951,14 +904,14 @@ export function App() {
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
                       {row.video_limit === null ? '∞' : row.video_limit}
                     </td>
-                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.status}</td>
+                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{tierStatusText(row.status)}</td>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.actressCount}</td>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
                       <button type="button" onClick={() => onEditTier(row)} style={{ marginRight: 8 }}>
-                        Edit
+                        编辑
                       </button>
                       <button type="button" onClick={() => void onDeleteTier(row.id)} disabled={submitting}>
-                        Delete
+                        删除
                       </button>
                     </td>
                   </tr>
@@ -975,11 +928,11 @@ export function App() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search actress by name"
+              placeholder="按演员名称搜索"
               style={{ minWidth: 260 }}
             />
             <button onClick={onSearch} disabled={loading}>
-              {loading ? 'Searching...' : 'Search'}
+              {loading ? '搜索中...' : '搜索'}
             </button>
           </div>
 
@@ -997,24 +950,24 @@ export function App() {
               onClick={() => setSelectedActressIds(actresses.map((a) => a.id))}
               disabled={actresses.length === 0}
             >
-              Select all (visible)
+              全选当前列表
             </button>
             <button type="button" onClick={() => setSelectedActressIds([])}>
-              Clear selection
+              清空选择
             </button>
-            <span style={{ color: '#6b7280' }}>{selectedActressIds.length} selected</span>
+            <span style={{ color: '#6b7280' }}>已选 {selectedActressIds.length} 项</span>
             <button type="button" onClick={() => void onSyncEmbyIds()}>
-              Sync Emby IDs
+              同步 Emby ID
             </button>
             <button type="button" onClick={() => void onSyncMovieCounts()}>
-              Sync video counts
+              同步影片数量
             </button>
           </div>
 
           <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0 }}>{editingId === null ? 'Create Actress' : `Edit Actress #${editingId}`}</h3>
+            <h3 style={{ marginTop: 0 }}>{editingId === null ? '新增演员' : `编辑演员 #${editingId}`}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 160px', gap: 8, alignItems: 'center' }}>
-              <input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+              <input placeholder="演员名称" value={name} onChange={(e) => setName(e.target.value)} />
               <select value={tierId} onChange={(e) => setTierId(Number(e.target.value))}>
                 {tiers.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -1024,23 +977,23 @@ export function App() {
               </select>
               <input
                 type="number"
-                placeholder="Video Count"
+                placeholder="影片数量"
                 value={videoCount}
                 onChange={(e) => setVideoCount(Number(e.target.value))}
               />
             </div>
             <input
               style={{ marginTop: 8, width: '100%' }}
-              placeholder="Emby IDs (comma separated)"
+              placeholder="Emby ID（多个 ID 用英文逗号分隔）"
               value={embyIdsInput}
               onChange={(e) => setEmbyIdsInput(e.target.value)}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button onClick={() => void onSubmitActress()} disabled={submitting}>
-                {submitting ? 'Saving...' : editingId === null ? 'Create' : 'Update'}
+                {submitting ? '保存中...' : editingId === null ? '新增' : '更新'}
               </button>
               <button onClick={resetForm} disabled={submitting}>
-                Reset
+                重置
               </button>
             </div>
           </section>
@@ -1051,11 +1004,11 @@ export function App() {
                 <tr style={{ background: '#f9fafb' }}>
                   <th style={{ padding: 8, width: 40 }} />
                   <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Name</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Tier</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Videos</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Emby IDs</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>Actions</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>名称</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>梯队</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>影片</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>Emby ID</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -1075,10 +1028,10 @@ export function App() {
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.embyIds.join(', ') || '-'}</td>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
                       <button onClick={() => onEdit(row)} style={{ marginRight: 8 }}>
-                        Edit
+                        编辑
                       </button>
                       <button onClick={() => void onDelete(row.id)} disabled={submitting}>
-                        Delete
+                        删除
                       </button>
                     </td>
                   </tr>
@@ -1086,7 +1039,7 @@ export function App() {
                 {actresses.length === 0 ? (
                   <tr>
                     <td style={{ padding: 10 }} colSpan={7}>
-                      No actresses found.
+                      没有找到演员。
                     </td>
                   </tr>
                 ) : null}
@@ -1098,13 +1051,13 @@ export function App() {
 
       {tab === 'storage' ? (
         <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0 }}>Scan tier storage path</h3>
+          <h3 style={{ marginTop: 0 }}>扫描梯队存储目录</h3>
           <p style={{ marginTop: 0, color: '#6b7280', fontSize: 14 }}>
-            Resolve AFP/SMB-style paths when possible and list first-level folder names for the selected tier.
+            读取指定目录下的一级文件夹名称，并将未入库的演员名称批量导入当前梯队。
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              Tier
+              梯队
               <select value={storageTierId} onChange={(e) => setStorageTierId(Number(e.target.value))}>
                 {tiers.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -1116,12 +1069,12 @@ export function App() {
           </div>
           <input
             style={{ width: '100%', maxWidth: 560, marginBottom: 8, display: 'block' }}
-            placeholder="Path or URL, e.g. /Volumes/share or afp://..."
+            placeholder="目录路径，例如 /Volumes/share"
             value={storagePathInput}
             onChange={(e) => setStoragePathInput(e.target.value)}
           />
           <button type="button" onClick={() => void onScanStorage()} disabled={loading}>
-            {loading ? 'Scanning...' : 'Scan folders'}
+            {loading ? '扫描中...' : '扫描文件夹'}
           </button>
           <button
             type="button"
@@ -1129,17 +1082,16 @@ export function App() {
             disabled={storageImporting || !storageFolders || storageFolders.length === 0}
             style={{ marginLeft: 8 }}
           >
-            {storageImporting ? 'Importing...' : 'Batch import folders -> actresses'}
+            {storageImporting ? '导入中...' : '批量导入为演员'}
           </button>
           {storageResolved ? (
             <p style={{ marginTop: 12, marginBottom: 0 }}>
-              <strong>Resolved:</strong> <code>{storageResolved}</code>
+              <strong>实际路径：</strong> <code>{storageResolved}</code>
             </p>
           ) : null}
           {storageImportResult ? (
             <p style={{ marginTop: 8, color: '#374151' }}>
-              Imported {storageImportResult.created.length}, skipped existing {storageImportResult.skippedExisting.length},
-              skipped empty {storageImportResult.skippedEmpty}.
+              已导入 {storageImportResult.created.length} 项，跳过已有 {storageImportResult.skippedExisting.length} 项，跳过空名称 {storageImportResult.skippedEmpty} 项。
             </p>
           ) : null}
           {storageFolders && storageFolders.length > 0 ? (
@@ -1149,8 +1101,64 @@ export function App() {
               ))}
             </ul>
           ) : storageFolders && storageFolders.length === 0 ? (
-            <p style={{ marginTop: 8, color: '#6b7280' }}>No subfolders found (or path is not a directory).</p>
+            <p style={{ marginTop: 8, color: '#6b7280' }}>没有找到一级子文件夹，或该路径不是目录。</p>
           ) : null}
+        </section>
+      ) : null}
+
+      {tab === 'settings' ? (
+        <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <h3 style={{ marginTop: 0 }}>系统设置</h3>
+          <div style={{ display: 'grid', gap: 12, maxWidth: 760 }}>
+            <label>
+              数据库文件
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input readOnly style={{ width: '100%' }} value={selectedDatabasePath || databasePathFromUrl(databaseUrl)} />
+                <button type="button" onClick={onSelectDatabaseFile} style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  重新选择
+                </button>
+              </div>
+            </label>
+            <label>
+              Emby 服务地址
+              <input
+                style={{ width: '100%' }}
+                value={embyServerUrl}
+                onChange={(e) => setEmbyServerUrl(e.target.value)}
+                placeholder="例如 http://192.168.1.10:8096"
+              />
+            </label>
+            <label>
+              Emby API Key
+              <input
+                style={{ width: '100%' }}
+                value={embyApiKey}
+                onChange={(e) => setEmbyApiKey(e.target.value)}
+                type="password"
+                placeholder="用于演员 ID 与影片数量同步"
+              />
+            </label>
+            <label>
+              默认存储目录
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  style={{ width: '100%' }}
+                  value={storageRootPath}
+                  onChange={(e) => setStorageRootPath(e.target.value)}
+                  placeholder="例如 /Volumes/JAV_output"
+                />
+                <button type="button" onClick={() => void onSelectStorageFolder()} style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  选择目录
+                </button>
+              </div>
+            </label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button type="button" onClick={() => void onSaveRuntimeSettings()} disabled={saving}>
+                {saving ? '保存中...' : '保存设置'}
+              </button>
+              {settingsMessage ? <span style={{ color: '#16a34a' }}>{settingsMessage}</span> : null}
+            </div>
+          </div>
         </section>
       ) : null}
 

@@ -4,9 +4,9 @@ import path from 'path';
 export type DesktopRuntimeConfig = {
   dbMode: 'sqlite' | 'postgres';
   databaseUrl: string;
-  adminPassword?: string;
   embyServerUrl?: string;
   embyApiKey?: string;
+  storageRootPath?: string;
 };
 
 export function getDesktopConfigPath(userDataPath: string) {
@@ -36,11 +36,7 @@ export async function saveDesktopRuntimeConfig(userDataPath: string, config: Des
 
 export function applyDesktopRuntimeEnv(config: DesktopRuntimeConfig) {
   process.env.DATABASE_URL = config.databaseUrl;
-  if (config.adminPassword) {
-    process.env.ADMIN_PASSWORD = config.adminPassword;
-  } else {
-    delete process.env.ADMIN_PASSWORD;
-  }
+  delete process.env.ADMIN_PASSWORD;
   if (config.embyServerUrl) {
     process.env.EMBY_SERVER_URL = config.embyServerUrl;
   } else {

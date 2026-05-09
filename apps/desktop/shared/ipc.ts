@@ -16,6 +16,8 @@ export const IPC_CHANNELS = {
   HEALTH_SNAPSHOT: 'desktop:health-snapshot',
   GET_BOOTSTRAP_STATE: 'desktop:get-bootstrap-state',
   SAVE_CONFIG_AND_INIT: 'desktop:save-config-and-init',
+  GET_RUNTIME_CONFIG: 'desktop:get-runtime-config',
+  SAVE_RUNTIME_CONFIG: 'desktop:save-runtime-config',
   GET_AUTH_STATE: 'desktop:get-auth-state',
   LOGIN: 'desktop:login',
   LOGOUT: 'desktop:logout',
@@ -37,6 +39,7 @@ export const IPC_CHANNELS = {
   SCAN_STORAGE: 'desktop:scan-storage',
   BATCH_IMPORT_STORAGE_FOLDERS: 'desktop:batch-import-storage-folders',
   SELECT_DATABASE_FILE: 'desktop:select-database-file',
+  SELECT_STORAGE_FOLDER: 'desktop:select-storage-folder',
   OPEN_USER_DATA_FOLDER: 'desktop:open-user-data-folder',
 } as const;
 
@@ -52,6 +55,14 @@ export type IpcInvokeMap = {
   [IPC_CHANNELS.SAVE_CONFIG_AND_INIT]: {
     args: [DesktopRuntimeConfig];
     result: DesktopBootstrapState;
+  };
+  [IPC_CHANNELS.GET_RUNTIME_CONFIG]: {
+    args: [];
+    result: DesktopRuntimeConfig | null;
+  };
+  [IPC_CHANNELS.SAVE_RUNTIME_CONFIG]: {
+    args: [DesktopRuntimeConfig];
+    result: DesktopRuntimeConfig;
   };
   [IPC_CHANNELS.GET_AUTH_STATE]: {
     args: [];
@@ -136,6 +147,10 @@ export type IpcInvokeMap = {
   [IPC_CHANNELS.SELECT_DATABASE_FILE]: {
     args: [];
     result: { canceled: true } | { canceled: false; filePath: string; databaseUrl: string };
+  };
+  [IPC_CHANNELS.SELECT_STORAGE_FOLDER]: {
+    args: [];
+    result: { canceled: true } | { canceled: false; folderPath: string };
   };
   [IPC_CHANNELS.OPEN_USER_DATA_FOLDER]: {
     args: [];

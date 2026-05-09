@@ -5,6 +5,8 @@ const IPC_CHANNELS = {
   HEALTH_SNAPSHOT: 'desktop:health-snapshot',
   GET_BOOTSTRAP_STATE: 'desktop:get-bootstrap-state',
   SAVE_CONFIG_AND_INIT: 'desktop:save-config-and-init',
+  GET_RUNTIME_CONFIG: 'desktop:get-runtime-config',
+  SAVE_RUNTIME_CONFIG: 'desktop:save-runtime-config',
   GET_AUTH_STATE: 'desktop:get-auth-state',
   LOGIN: 'desktop:login',
   LOGOUT: 'desktop:logout',
@@ -26,6 +28,7 @@ const IPC_CHANNELS = {
   SCAN_STORAGE: 'desktop:scan-storage',
   BATCH_IMPORT_STORAGE_FOLDERS: 'desktop:batch-import-storage-folders',
   SELECT_DATABASE_FILE: 'desktop:select-database-file',
+  SELECT_STORAGE_FOLDER: 'desktop:select-storage-folder',
   OPEN_USER_DATA_FOLDER: 'desktop:open-user-data-folder',
 } as const;
 
@@ -35,6 +38,10 @@ type DesktopApi = {
   saveConfigAndInit: (
     config: IpcInvokeMap[typeof IPC_CHANNELS.SAVE_CONFIG_AND_INIT]['args'][0],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SAVE_CONFIG_AND_INIT]['result']>;
+  getRuntimeConfig: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.GET_RUNTIME_CONFIG]['result']>;
+  saveRuntimeConfig: (
+    config: IpcInvokeMap[typeof IPC_CHANNELS.SAVE_RUNTIME_CONFIG]['args'][0],
+  ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SAVE_RUNTIME_CONFIG]['result']>;
   getAuthState: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.GET_AUTH_STATE]['result']>;
   login: (
     password: IpcInvokeMap[typeof IPC_CHANNELS.LOGIN]['args'][0],
@@ -90,6 +97,7 @@ type DesktopApi = {
     folderNames: IpcInvokeMap[typeof IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS]['args'][1],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS]['result']>;
   selectDatabaseFile: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SELECT_DATABASE_FILE]['result']>;
+  selectStorageFolder: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SELECT_STORAGE_FOLDER]['result']>;
   openUserDataFolder: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.OPEN_USER_DATA_FOLDER]['result']>;
 };
 
@@ -97,6 +105,8 @@ const desktopApi: DesktopApi = {
   getHealthSnapshot: () => ipcRenderer.invoke(IPC_CHANNELS.HEALTH_SNAPSHOT),
   getBootstrapState: () => ipcRenderer.invoke(IPC_CHANNELS.GET_BOOTSTRAP_STATE),
   saveConfigAndInit: (config) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_CONFIG_AND_INIT, config),
+  getRuntimeConfig: () => ipcRenderer.invoke(IPC_CHANNELS.GET_RUNTIME_CONFIG),
+  saveRuntimeConfig: (config) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_RUNTIME_CONFIG, config),
   getAuthState: () => ipcRenderer.invoke(IPC_CHANNELS.GET_AUTH_STATE),
   login: (password) => ipcRenderer.invoke(IPC_CHANNELS.LOGIN, password),
   logout: () => ipcRenderer.invoke(IPC_CHANNELS.LOGOUT),
@@ -119,6 +129,7 @@ const desktopApi: DesktopApi = {
   batchImportStorageFolders: (tierId, folderNames) =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCH_IMPORT_STORAGE_FOLDERS, tierId, folderNames),
   selectDatabaseFile: () => ipcRenderer.invoke(IPC_CHANNELS.SELECT_DATABASE_FILE),
+  selectStorageFolder: () => ipcRenderer.invoke(IPC_CHANNELS.SELECT_STORAGE_FOLDER),
   openUserDataFolder: () => ipcRenderer.invoke(IPC_CHANNELS.OPEN_USER_DATA_FOLDER),
 };
 

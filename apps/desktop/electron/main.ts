@@ -41,7 +41,7 @@ function databaseUrlFromFilePath(filePath: string) {
 
 function ensureAuthenticated() {
   if (!isDesktopAuthenticated) {
-    throw new Error('Unauthorized');
+    throw new Error('请先完成数据库选择。');
   }
 }
 
@@ -100,6 +100,7 @@ function registerIpcHandlers() {
 
     applyDesktopRuntimeEnv(config);
     await resetDesktopPrismaClient();
+    isDesktopAuthenticated = true;
     return {
       configured: true,
       initialized: true,
@@ -119,6 +120,7 @@ function registerIpcHandlers() {
         const workspaceRoot = path.resolve(__dirname, '../../../..');
         await initializeDatabaseForDesktop(config, workspaceRoot);
         await saveDesktopRuntimeConfig(userDataPath, config);
+        isDesktopAuthenticated = true;
         return {
           configured: true,
           initialized: true,
@@ -130,32 +132,36 @@ function registerIpcHandlers() {
           configured: true,
           initialized: false,
           configPath,
-          message: e instanceof Error ? e.message : 'Database initialization failed.',
+          message: e instanceof Error ? e.message : '数据库初始化失败。',
         };
       }
     },
   );
 
+  ipcMain.handle(IPC_CHANNELS.GET_RUNTIME_CONFIG, async () => {
+    ensureAuthenticated();
+    return loadDesktopRuntimeConfig(app.getPath('userData'));
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SAVE_RUNTIME_CONFIG, async (_event, config: DesktopRuntimeConfig) => {
+    ensureAuthenticated();
+    await saveDesktopRuntimeConfig(app.getPath('userData'), config);
+    applyDesktopRuntimeEnv(config);
+    await resetDesktopPrismaClient();
+    return config;
+  });
+
   ipcMain.handle(IPC_CHANNELS.GET_AUTH_STATE, async () => ({
     authenticated: isDesktopAuthenticated,
   }));
 
-  ipcMain.handle(IPC_CHANNELS.LOGIN, async (_event, password: string) => {
-    const expected = process.env.ADMIN_PASSWORD?.trim();
-    if (!expected) {
-      isDesktopAuthenticated = true;
-      return { authenticated: true };
-    }
-    if (password === expected) {
-      isDesktopAuthenticated = true;
-      return { authenticated: true };
-    }
-    return { authenticated: false, message: 'Invalid password.' };
+  ipcMain.handle(IPC_CHANNELS.LOGIN, async () => {
+    isDesktopAuthenticated = true;
+    return { authenticated: true };
   });
 
   ipcMain.handle(IPC_CHANNELS.LOGOUT, async () => {
-    isDesktopAuthenticated = false;
-    return { authenticated: false };
+    return { authenticated: true };
   });
 
   ipcMain.handle(IPC_CHANNELS.LIST_TIERS, async () => {
@@ -248,7 +254,7 @@ function registerIpcHandlers() {
 
   ipcMain.handle(IPC_CHANNELS.SELECT_DATABASE_FILE, async () => {
     const result = await dialog.showOpenDialog({
-      title: 'Select JATLAS database file',
+      title: '选择 JATLAS 数据库文件',
       properties: ['openFile'],
       filters: [
         { name: 'SQLite database', extensions: ['db', 'sqlite', 'sqlite3'] },
@@ -264,6 +270,19 @@ function registerIpcHandlers() {
       filePath,
       databaseUrl: databaseUrlFromFilePath(filePath),
     };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SELECT_STORAGE_FOLDER, async () => {
+    ensureAuthenticated();
+    const result = await dialog.showOpenDialog({
+      title: '选择 NAS 或本机存储目录',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    const folderPath = result.filePaths[0];
+    if (result.canceled || !folderPath) {
+      return { canceled: true as const };
+    }
+    return { canceled: false as const, folderPath };
   });
 
   ipcMain.handle(IPC_CHANNELS.OPEN_USER_DATA_FOLDER, async () => {

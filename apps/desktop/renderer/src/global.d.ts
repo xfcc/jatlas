@@ -18,6 +18,8 @@ declare global {
       getHealthSnapshot: () => Promise<DesktopHealthSnapshot>;
       getBootstrapState: () => Promise<DesktopBootstrapState>;
       saveConfigAndInit: (config: DesktopRuntimeConfig) => Promise<DesktopBootstrapState>;
+      getRuntimeConfig: () => Promise<DesktopRuntimeConfig | null>;
+      saveRuntimeConfig: (config: DesktopRuntimeConfig) => Promise<DesktopRuntimeConfig>;
       getAuthState: () => Promise<{ authenticated: boolean }>;
       login: (password: string) => Promise<{ authenticated: boolean; message?: string }>;
       logout: () => Promise<{ authenticated: boolean }>;
@@ -39,6 +41,7 @@ declare global {
       scanStorage: (tierId: number, path: string) => Promise<{ resolvedPath: string; folders: string[] }>;
       batchImportStorageFolders: (tierId: number, folderNames: string[]) => Promise<DesktopStorageBatchImportResult>;
       selectDatabaseFile: () => Promise<{ canceled: true } | { canceled: false; filePath: string; databaseUrl: string }>;
+      selectStorageFolder: () => Promise<{ canceled: true } | { canceled: false; folderPath: string }>;
       openUserDataFolder: () => Promise<{ ok: true }>;
     };
   }
