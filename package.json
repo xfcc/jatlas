@@ -88,11 +88,11 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "apps/icon.png",
-      "target": ["dmg", "zip"]
+      "target": ["zip"]
     },
     "win": {
       "icon": "apps/icon.png",
-      "target": ["portable", "nsis"]
+      "target": ["portable"]
     }
   }
 }

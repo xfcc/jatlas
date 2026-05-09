@@ -15,6 +15,17 @@ import type { TaskState } from '../../core/desktopTaskStore';
 
 type WorkspaceTab = 'dashboard' | 'tiers' | 'actresses' | 'storage';
 
+const initialDatabaseUrl = 'file:./jatlas-desktop.db';
+
+function defaultDatabaseUrlFromConfigPath(configPath: string) {
+  const normalized = configPath.replace(/\\/g, '/');
+  const lastSlash = normalized.lastIndexOf('/');
+  if (lastSlash < 0) {
+    return initialDatabaseUrl;
+  }
+  return `file:${normalized.slice(0, lastSlash)}/jatlas-desktop.db`;
+}
+
 export function App() {
   const [bootstrap, setBootstrap] = useState<DesktopBootstrapState | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
@@ -25,7 +36,7 @@ export function App() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dbMode, setDbMode] = useState<'sqlite' | 'postgres'>('sqlite');
-  const [databaseUrl, setDatabaseUrl] = useState('file:./jatlas-desktop.db');
+  const [databaseUrl, setDatabaseUrl] = useState(initialDatabaseUrl);
   const [adminPassword, setAdminPassword] = useState('');
   const [embyServerUrl, setEmbyServerUrl] = useState('');
   const [embyApiKey, setEmbyApiKey] = useState('');
@@ -94,6 +105,9 @@ export function App() {
     void (async () => {
       const state = await window.desktopApi.getBootstrapState();
       setBootstrap(state);
+      if (!state.configured && state.configPath) {
+        setDatabaseUrl((current) => current === initialDatabaseUrl ? defaultDatabaseUrlFromConfigPath(state.configPath) : current);
+      }
       if (state.configured && state.initialized) {
         const auth = await window.desktopApi.getAuthState();
         setAuthenticated(auth.authenticated);
