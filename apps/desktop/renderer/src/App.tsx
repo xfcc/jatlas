@@ -13,7 +13,8 @@ import type { DesktopHealthSnapshot } from '../../core/desktopProbeService';
 import type { DesktopRuntimeConfig } from '../../core/configService';
 import type { TaskState } from '../../core/desktopTaskStore';
 
-type WorkspaceTab = 'dashboard' | 'tiers' | 'actresses' | 'storage' | 'settings';
+type WorkspaceTab = 'intro' | 'actresses' | 'tiers' | 'settings';
+type EditorView = { kind: 'actress'; id: number | null } | { kind: 'tier'; id: number | null } | null;
 
 const initialDatabaseUrl = 'file:./jatlas-desktop.db';
 
@@ -58,7 +59,8 @@ export function App() {
   const [videoCount, setVideoCount] = useState<number>(0);
   const [embyIdsInput, setEmbyIdsInput] = useState('');
 
-  const [tab, setTab] = useState<WorkspaceTab>('dashboard');
+  const [tab, setTab] = useState<WorkspaceTab>('intro');
+  const [editorView, setEditorView] = useState<EditorView>(null);
   const [dashboardStats, setDashboardStats] = useState<DesktopDashboardStats | null>(null);
   const [assetChart, setAssetChart] = useState<DesktopAssetLogChartRow[] | null>(null);
 
@@ -169,11 +171,11 @@ export function App() {
     }
     void (async () => {
       try {
-        if (tab === 'dashboard') {
+        if (tab === 'intro') {
           await loadDashboardData();
         } else if (tab === 'actresses') {
           await loadWorkspaceData(query);
-        } else if (tab === 'tiers' || tab === 'storage') {
+        } else if (tab === 'tiers' || tab === 'settings') {
           await loadTiersOnly();
         }
       } catch (e) {
@@ -187,11 +189,11 @@ export function App() {
     setLoading(true);
     setError(null);
     try {
-      if (tab === 'dashboard') {
+      if (tab === 'intro') {
         await loadDashboardData();
       } else if (tab === 'actresses') {
         await loadWorkspaceData(query);
-      } else if (tab === 'storage') {
+      } else if (tab === 'settings') {
         await loadTiersOnly();
       } else {
         await loadTiersOnly();
@@ -437,6 +439,7 @@ export function App() {
     setTierName(row.name);
     setTierLimitRaw(row.video_limit === null ? '' : String(row.video_limit));
     setTierStatus(row.status);
+    setEditorView({ kind: 'tier', id: row.id });
   };
 
   const onSubmitTier = async () => {
@@ -499,6 +502,7 @@ export function App() {
       }
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
       resetTierForm();
+      setEditorView(null);
     } catch (e) {
       setTiers(previousTiers);
       setActresses(previousActresses);
@@ -602,6 +606,7 @@ export function App() {
       }
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
       resetForm();
+      setEditorView(null);
     } catch (e) {
       setActresses(previousActresses);
       setError(e instanceof Error ? e.message : '保存演员失败');
@@ -616,6 +621,17 @@ export function App() {
     setTierId(row.tierId);
     setVideoCount(row.video_count);
     setEmbyIdsInput(row.embyIds.join(', '));
+    setEditorView({ kind: 'actress', id: row.id });
+  };
+
+  const onCreateActress = () => {
+    resetForm();
+    setEditorView({ kind: 'actress', id: null });
+  };
+
+  const onCreateTier = () => {
+    resetTierForm();
+    setEditorView({ kind: 'tier', id: null });
   };
 
   const onDelete = async (id: number) => {
@@ -686,41 +702,115 @@ export function App() {
       <p style={{ color: '#4b5563' }}>演员分级台账、Emby 对账与 NAS 存储扫描。</p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-        {(['dashboard', 'tiers', 'actresses', 'storage', 'settings'] as const).map((key) => (
+        {(['intro', 'actresses', 'tiers', 'settings'] as const).map((key) => (
           <button
             key={key}
-            className={tab === key ? 'workspace-tab active' : 'workspace-tab'}
-            onClick={() => setTab(key)}
+            className={!editorView && tab === key ? 'workspace-tab active' : 'workspace-tab'}
+            onClick={() => {
+              setEditorView(null);
+              setTab(key);
+            }}
             style={{
               padding: '6px 12px',
-              fontWeight: tab === key ? 700 : 400,
-              border: tab === key ? '2px solid #111827' : '1px solid #d1d5db',
-              background: tab === key ? '#f3f4f6' : '#fff',
+              fontWeight: !editorView && tab === key ? 700 : 400,
+              border: !editorView && tab === key ? '2px solid #111827' : '1px solid #d1d5db',
+              background: !editorView && tab === key ? '#f3f4f6' : '#fff',
             }}
           >
-            {key === 'dashboard'
-              ? '总览'
+            {key === 'intro'
+              ? '介绍'
               : key === 'tiers'
                 ? '梯队'
                 : key === 'actresses'
                   ? '演员'
-                  : key === 'storage'
-                    ? '存储扫描'
-                    : '设置'}
+                  : '设置'}
           </button>
         ))}
-        <button className="workspace-tool" onClick={() => void refreshCurrentTab()} disabled={loading}>
-          {loading ? '刷新中...' : '刷新'}
-        </button>
-        <button className="workspace-tool" onClick={() => void onFetchSnapshot()} disabled={loading}>
-          诊断
-        </button>
-        <button className="workspace-tool" type="button" onClick={() => void window.desktopApi.openUserDataFolder()}>
-          打开数据目录
-        </button>
       </div>
 
-      {syncTaskState ? (
+      {editorView?.kind === 'tier' ? (
+        <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button type="button" onClick={() => setEditorView(null)} style={{ marginBottom: 12 }}>
+            返回梯队列表
+          </button>
+          <h2 style={{ marginTop: 0 }}>{editorView.id === null ? '新增梯队' : `编辑梯队 #${editorView.id}`}</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 160px', gap: 8 }}>
+            <input placeholder="梯队名称" value={tierName} onChange={(e) => setTierName(e.target.value)} />
+            <input
+              placeholder="影片上限（空=不限）"
+              value={tierLimitRaw}
+              onChange={(e) => setTierLimitRaw(e.target.value)}
+            />
+            <select value={tierStatus} onChange={(e) => setTierStatus(e.target.value)}>
+              <option value="active">现役</option>
+              <option value="retired">引退</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button onClick={() => void onSubmitTier()} disabled={submitting}>
+              {submitting ? '保存中...' : '保存梯队'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                resetTierForm();
+                setEditorView(null);
+              }}
+              disabled={submitting}
+            >
+              取消
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {editorView?.kind === 'actress' ? (
+        <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button type="button" onClick={() => setEditorView(null)} style={{ marginBottom: 12 }}>
+            返回演员列表
+          </button>
+          <h2 style={{ marginTop: 0 }}>{editorView.id === null ? '新增演员' : `编辑演员 #${editorView.id}`}</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 160px', gap: 8, alignItems: 'center' }}>
+            <input placeholder="演员名称" value={name} onChange={(e) => setName(e.target.value)} />
+            <select value={tierId} onChange={(e) => setTierId(Number(e.target.value))}>
+              {tiers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              placeholder="影片数量"
+              value={videoCount}
+              onChange={(e) => setVideoCount(Number(e.target.value))}
+            />
+          </div>
+          <input
+            style={{ marginTop: 8, width: '100%' }}
+            placeholder="Emby ID（多个 ID 用英文逗号分隔）"
+            value={embyIdsInput}
+            onChange={(e) => setEmbyIdsInput(e.target.value)}
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button onClick={() => void onSubmitActress()} disabled={submitting}>
+              {submitting ? '保存中...' : '保存演员'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                resetForm();
+                setEditorView(null);
+              }}
+              disabled={submitting}
+            >
+              取消
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {!editorView && syncTaskState ? (
         <section style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             <strong>后台任务：</strong> {syncTaskState.status}{' '}
@@ -751,9 +841,27 @@ export function App() {
         </section>
       ) : null}
 
-      {tab === 'dashboard' && dashboardStats && assetChart ? (
+      {!editorView && tab === 'intro' && dashboardStats && assetChart ? (
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ marginTop: 0 }}>资产总览</h2>
+          <h2 style={{ marginTop: 0 }}>功能介绍</h2>
+          <p>
+            记忆不是可靠的介质，文件夹也不是长期秩序。JATLAS 面向 NAS + Emby 收藏结构，把演员、分级、存储和媒体库同步组织成可治理的本地台账。
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 18 }}>
+            <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0 }}>存储失控</h3>
+              <p>当收藏不断膨胀，硬盘扩容会变成唯一答案。JATLAS 通过分级上限和风险状态，让空间压力提前暴露。</p>
+            </div>
+            <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0 }}>记忆混乱</h3>
+              <p>演员、影片数量、Emby ID 和目录结构分散在不同地方。JATLAS 把它们收束为一份可维护台账。</p>
+            </div>
+            <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <h3 style={{ marginTop: 0 }}>同步滞后</h3>
+              <p>Emby 负责识别与播放，JATLAS 负责对账与治理判断，避免媒体库事实和本地规则长期脱节。</p>
+            </div>
+          </div>
+          <h2>当前资产状态</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
               <div style={{ fontSize: 12, color: '#6b7280' }}>演员总数</div>
@@ -837,53 +945,16 @@ export function App() {
         </div>
       ) : null}
 
-      {tab === 'dashboard' && !dashboardStats ? <p>正在加载总览...</p> : null}
+      {!editorView && tab === 'intro' && !dashboardStats ? <p>正在加载介绍...</p> : null}
 
-      {tab === 'tiers' ? (
+      {!editorView && tab === 'tiers' ? (
         <>
-          <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0 }}>
-              {tierEditingId === null ? '新增梯队' : `编辑梯队 #${tierEditingId}`}
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 140px', gap: 8 }}>
-              <input placeholder="梯队名称" value={tierName} onChange={(e) => setTierName(e.target.value)} />
-              <input
-                placeholder="影片上限（空=不限）"
-                value={tierLimitRaw}
-                onChange={(e) => setTierLimitRaw(e.target.value)}
-              />
-              <select value={tierStatus} onChange={(e) => setTierStatus(e.target.value)}>
-                <option value="active">现役</option>
-                <option value="retired">引退</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={() => void onSubmitTier()} disabled={submitting}>
-                {submitting ? '保存中...' : tierEditingId === null ? '新增' : '更新'}
-              </button>
-              <button onClick={resetTierForm} disabled={submitting}>
-                重置
-              </button>
-            </div>
-          </section>
-          <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0 }}>Emby：按梯队同步影片数量</h3>
-            <p style={{ marginTop: 0, color: '#6b7280', fontSize: 14 }}>
-              使用“设置”页保存的 Emby 地址和 API Key，同步完成后会显示每个演员的处理记录。
-            </p>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <select value={tierSyncId} onChange={(e) => setTierSyncId(Number(e.target.value))}>
-                {tiers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <button type="button" onClick={() => void onTierBulkVideoSync()}>
-                开始同步
-              </button>
-            </div>
-          </section>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ margin: 0 }}>梯队</h2>
+            <button type="button" onClick={onCreateTier}>
+              新增梯队
+            </button>
+          </div>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -922,8 +993,14 @@ export function App() {
         </>
       ) : null}
 
-      {tab === 'actresses' ? (
+      {!editorView && tab === 'actresses' ? (
         <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ margin: 0 }}>演员</h2>
+            <button type="button" onClick={onCreateActress}>
+              新增演员
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <input
               value={query}
@@ -963,40 +1040,6 @@ export function App() {
               同步影片数量
             </button>
           </div>
-
-          <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <h3 style={{ marginTop: 0 }}>{editingId === null ? '新增演员' : `编辑演员 #${editingId}`}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px 160px', gap: 8, alignItems: 'center' }}>
-              <input placeholder="演员名称" value={name} onChange={(e) => setName(e.target.value)} />
-              <select value={tierId} onChange={(e) => setTierId(Number(e.target.value))}>
-                {tiers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                placeholder="影片数量"
-                value={videoCount}
-                onChange={(e) => setVideoCount(Number(e.target.value))}
-              />
-            </div>
-            <input
-              style={{ marginTop: 8, width: '100%' }}
-              placeholder="Emby ID（多个 ID 用英文逗号分隔）"
-              value={embyIdsInput}
-              onChange={(e) => setEmbyIdsInput(e.target.value)}
-            />
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              <button onClick={() => void onSubmitActress()} disabled={submitting}>
-                {submitting ? '保存中...' : editingId === null ? '新增' : '更新'}
-              </button>
-              <button onClick={resetForm} disabled={submitting}>
-                重置
-              </button>
-            </div>
-          </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1049,12 +1092,23 @@ export function App() {
         </>
       ) : null}
 
-      {tab === 'storage' ? (
+      {!editorView && tab === 'settings' ? (
         <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0 }}>扫描梯队存储目录</h3>
+          <h3 style={{ marginTop: 0 }}>存储与工具</h3>
           <p style={{ marginTop: 0, color: '#6b7280', fontSize: 14 }}>
             读取指定目录下的一级文件夹名称，并将未入库的演员名称批量导入当前梯队。
           </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            <button type="button" onClick={() => void refreshCurrentTab()} disabled={loading}>
+              {loading ? '刷新中...' : '刷新当前数据'}
+            </button>
+            <button type="button" onClick={() => void onFetchSnapshot()} disabled={loading}>
+              运行诊断
+            </button>
+            <button type="button" onClick={() => void window.desktopApi.openUserDataFolder()}>
+              打开数据目录
+            </button>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               梯队
@@ -1106,7 +1160,7 @@ export function App() {
         </section>
       ) : null}
 
-      {tab === 'settings' ? (
+      {!editorView && tab === 'settings' ? (
         <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <h3 style={{ marginTop: 0 }}>系统设置</h3>
           <div style={{ display: 'grid', gap: 12, maxWidth: 760 }}>
