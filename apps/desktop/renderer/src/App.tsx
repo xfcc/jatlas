@@ -52,6 +52,7 @@ export function App() {
   const [tiers, setTiers] = useState<DesktopTier[]>([]);
   const [actresses, setActresses] = useState<DesktopActress[]>([]);
   const [query, setQuery] = useState('');
+  const [actressTierFilterId, setActressTierFilterId] = useState<number | 'all'>('all');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState('');
@@ -102,6 +103,9 @@ export function App() {
     if (!q) return true;
     return value.toLocaleLowerCase().includes(q.toLocaleLowerCase());
   };
+
+  const matchesCurrentTierFilter = (row: DesktopActress) =>
+    actressTierFilterId === 'all' || row.tierId === actressTierFilterId;
 
   useEffect(() => {
     if (tiers.length === 0) return;
@@ -257,8 +261,11 @@ export function App() {
   };
 
   useEffect(() => {
-    setSelectedActressIds((prev) => prev.filter((id) => actresses.some((a) => a.id === id)));
-  }, [actresses]);
+    setSelectedActressIds((prev) =>
+      prev.filter((id) => actresses.some((a) => a.id === id && matchesCurrentTierFilter(a))),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actresses, actressTierFilterId]);
 
   const toggleActressSelect = (id: number) => {
     setSelectedActressIds((prev) =>
@@ -576,12 +583,12 @@ export function App() {
     setActresses((prev) => {
       const next =
         editingId === null
-          ? matchesCurrentQuery(optimisticRow.name)
+          ? matchesCurrentQuery(optimisticRow.name) && matchesCurrentTierFilter(optimisticRow)
             ? [...prev, optimisticRow]
             : prev
           : prev
               .map((row) => (row.id === editingId ? optimisticRow : row))
-              .filter((row) => row.id !== optimisticRow.id || matchesCurrentQuery(row.name));
+              .filter((row) => row.id !== optimisticRow.id || (matchesCurrentQuery(row.name) && matchesCurrentTierFilter(row)));
       return next.sort((a, b) => a.id - b.id);
     });
 
@@ -590,7 +597,7 @@ export function App() {
         const created = await window.desktopApi.createActress(input);
         setActresses((prev) => {
           const replaced = prev.map((row) => (row.id === optimisticRow.id ? created : row));
-          if (!replaced.some((row) => row.id === created.id) && matchesCurrentQuery(created.name)) {
+          if (!replaced.some((row) => row.id === created.id) && matchesCurrentQuery(created.name) && matchesCurrentTierFilter(created)) {
             replaced.push(created);
           }
           return replaced.sort((a, b) => a.id - b.id);
@@ -600,7 +607,7 @@ export function App() {
         setActresses((prev) =>
           prev
             .map((row) => (row.id === editingId ? updated : row))
-            .filter((row) => row.id !== updated.id || matchesCurrentQuery(row.name))
+            .filter((row) => row.id !== updated.id || (matchesCurrentQuery(row.name) && matchesCurrentTierFilter(row)))
             .sort((a, b) => a.id - b.id),
         );
       }
@@ -664,6 +671,8 @@ export function App() {
       setLoading(false);
     }
   };
+
+  const visibleActresses = actresses.filter(matchesCurrentTierFilter);
 
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
@@ -1008,6 +1017,18 @@ export function App() {
               placeholder="按演员名称搜索"
               style={{ minWidth: 260 }}
             />
+            <select
+              value={actressTierFilterId}
+              onChange={(e) => setActressTierFilterId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              style={{ minWidth: 180 }}
+            >
+              <option value="all">全部梯队</option>
+              {tiers.map((tier) => (
+                <option key={tier.id} value={tier.id}>
+                  {tier.name}
+                </option>
+              ))}
+            </select>
             <button onClick={onSearch} disabled={loading}>
               {loading ? '搜索中...' : '搜索'}
             </button>
@@ -1024,8 +1045,8 @@ export function App() {
           >
             <button
               type="button"
-              onClick={() => setSelectedActressIds(actresses.map((a) => a.id))}
-              disabled={actresses.length === 0}
+              onClick={() => setSelectedActressIds(visibleActresses.map((a) => a.id))}
+              disabled={visibleActresses.length === 0}
             >
               全选当前列表
             </button>
@@ -1055,7 +1076,7 @@ export function App() {
                 </tr>
               </thead>
               <tbody>
-                {actresses.map((row) => (
+                {visibleActresses.map((row) => (
                   <tr key={row.id}>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
                       <input
@@ -1079,7 +1100,7 @@ export function App() {
                     </td>
                   </tr>
                 ))}
-                {actresses.length === 0 ? (
+                {visibleActresses.length === 0 ? (
                   <tr>
                     <td style={{ padding: 10 }} colSpan={7}>
                       没有找到演员。
