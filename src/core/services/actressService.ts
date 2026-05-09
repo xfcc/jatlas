@@ -17,7 +17,7 @@ export async function getActressesCore(params?: GetActressesParams) {
   const where: Prisma.ActressWhereInput = {};
 
   if (query) {
-    // SQLite string filters do not support `mode: 'insensitive'` (PostgreSQL-only in Prisma).
+    // SQLite string filters do not support Prisma's insensitive mode.
     where.name = { contains: query };
   }
   if (tierId) {

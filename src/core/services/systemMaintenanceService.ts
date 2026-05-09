@@ -1,9 +1,6 @@
-import { exec } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
-import { promisify } from 'util';
 
-const execAsync = promisify(exec);
 const backupDir = path.join(process.cwd(), 'backups');
 
 function getTimestamp() {
@@ -42,21 +39,13 @@ export async function backupDatabaseCore() {
   const timestamp = getTimestamp();
   const sqliteDbPath = resolveSqliteDbFilePath(process.env.DATABASE_URL);
 
-  if (sqliteDbPath) {
-    const backupFileName = `backup-${timestamp}.sqlite`;
-    const backupFilePath = path.join(backupDir, backupFileName);
-    await fs.copyFile(sqliteDbPath, backupFilePath);
-    return { success: true, message: `成功创建备份 ${backupFileName}` } as const;
+  if (!sqliteDbPath) {
+    throw new Error('仅支持 SQLite 数据库备份');
   }
 
-  const backupFileName = `backup-${timestamp}.sql`;
+  const backupFileName = `backup-${timestamp}.sqlite`;
   const backupFilePath = path.join(backupDir, backupFileName);
-
-  const pgDumpCmd = process.env.PG_DUMP_PATH || 'pg_dump';
-  const dbUrl = process.env.DATABASE_URL?.split('?')[0];
-  const command = `${pgDumpCmd} "${dbUrl}" > "${backupFilePath}"`;
-  await execAsync(command);
-
+  await fs.copyFile(sqliteDbPath, backupFilePath);
   return { success: true, message: `成功创建备份 ${backupFileName}` } as const;
 }
 
@@ -65,16 +54,11 @@ export async function restoreDatabaseCore(fileName: string) {
   await backupDatabaseCore();
 
   const sqliteDbPath = resolveSqliteDbFilePath(process.env.DATABASE_URL);
-  if (sqliteDbPath) {
-    await fs.copyFile(backupFilePath, sqliteDbPath);
-    return { success: true, message: `成功从 ${fileName} 恢复数据库。` } as const;
+  if (!sqliteDbPath) {
+    throw new Error('仅支持 SQLite 数据库恢复');
   }
 
-  const psqlCmd = process.env.PSQL_PATH || 'psql';
-  const dbUrl = process.env.DATABASE_URL?.split('?')[0];
-  const command = `${psqlCmd} "${dbUrl}" < "${backupFilePath}"`;
-  await execAsync(command);
-
+  await fs.copyFile(backupFilePath, sqliteDbPath);
   return { success: true, message: `成功从 ${fileName} 恢复数据库。` } as const;
 }
 

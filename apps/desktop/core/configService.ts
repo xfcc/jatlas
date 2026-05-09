@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 export type DesktopRuntimeConfig = {
-  dbMode: 'sqlite' | 'postgres';
+  dbMode: 'sqlite';
   databaseUrl: string;
   embyServerUrl?: string;
   embyApiKey?: string;
@@ -18,7 +18,7 @@ export async function loadDesktopRuntimeConfig(userDataPath: string): Promise<De
   try {
     const raw = await fs.readFile(configPath, 'utf8');
     const parsed = JSON.parse(raw) as DesktopRuntimeConfig;
-    if (!parsed?.databaseUrl || (parsed.dbMode !== 'sqlite' && parsed.dbMode !== 'postgres')) {
+    if (!parsed?.databaseUrl || parsed.dbMode !== 'sqlite') {
       return null;
     }
     return parsed;
@@ -36,7 +36,6 @@ export async function saveDesktopRuntimeConfig(userDataPath: string, config: Des
 
 export function applyDesktopRuntimeEnv(config: DesktopRuntimeConfig) {
   process.env.DATABASE_URL = config.databaseUrl;
-  delete process.env.ADMIN_PASSWORD;
   if (config.embyServerUrl) {
     process.env.EMBY_SERVER_URL = config.embyServerUrl;
   } else {

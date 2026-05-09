@@ -16,8 +16,7 @@
     "desktop:start": "electron apps/desktop/dist-electron/electron/main.js",
     "desktop:dev": "concurrently -k -n electron-ts,renderer,electron -c cyan,magenta,green \"tsc -p apps/desktop/tsconfig.electron.json --watch\" \"vite --config apps/desktop/vite.config.ts\" \"wait-on tcp:5173 file:apps/desktop/dist-electron/electron/main.js && cross-env DESKTOP_RENDERER_URL=http://127.0.0.1:5173 electron apps/desktop/dist-electron/electron/main.js\"",
     "desktop:prepare-prisma-engines": "tsx scripts/ensure-prisma-engines.ts",
-    "desktop:pack": "npm run desktop:prepare-prisma-engines && npm run desktop:build && electron-builder",
-    "migrate:pg-to-sqlite": "tsx scripts/migrate-pg-to-sqlite.ts"
+    "desktop:pack": "npm run desktop:prepare-prisma-engines && npm run desktop:build && electron-builder"
   },
   "dependencies": {
     "@prisma/client": "^5.11.0",
@@ -26,7 +25,6 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.33",
-    "@types/pg": "^8.16.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-react": "^6.0.1",
@@ -38,9 +36,7 @@
     "eslint": "^8.57.1",
     "jest": "^30.2.0",
     "jest-mock-extended": "^4.0.0",
-    "pg": "^8.18.0",
     "ts-jest": "^29.4.6",
-    "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vite": "^8.0.8",
@@ -49,9 +45,6 @@
     "react-dom": "^18",
     "@types/react": "^18",
     "@types/react-dom": "^18"
-  },
-  "prisma": {
-    "seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
   },
   "build": {
     "appId": "com.jatlas.desktop",
