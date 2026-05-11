@@ -9,12 +9,15 @@ import type {
   DesktopTier,
   DesktopTierInput,
 } from '../../core/desktopDataService';
-import type { DesktopHealthSnapshot } from '../../core/desktopProbeService';
 import type { DesktopRuntimeConfig } from '../../core/configService';
 import type { TaskState } from '../../core/desktopTaskStore';
 
 type WorkspaceTab = 'intro' | 'actresses' | 'tiers' | 'settings';
-type EditorView = { kind: 'actress'; id: number | null } | { kind: 'tier'; id: number | null } | null;
+type EditorView =
+  | { kind: 'actress'; id: number | null }
+  | { kind: 'tier'; id: number | null }
+  | { kind: 'tier-detail'; id: number }
+  | null;
 
 const initialDatabaseUrl = 'file:./jatlas-desktop.db';
 
@@ -35,10 +38,18 @@ function tierStatusText(status: string) {
   return status === 'retired' ? '引退' : '现役';
 }
 
+function compactTierStoragePaths(paths: Record<string, string>) {
+  const clean = Object.fromEntries(
+    Object.entries(paths)
+      .map(([key, value]) => [key, value.trim()] as const)
+      .filter(([, value]) => value.length > 0),
+  );
+  return Object.keys(clean).length > 0 ? clean : undefined;
+}
+
 export function App() {
   const [bootstrap, setBootstrap] = useState<DesktopBootstrapState | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
-  const [snapshot, setSnapshot] = useState<DesktopHealthSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -48,7 +59,9 @@ export function App() {
   const [embyServerUrl, setEmbyServerUrl] = useState('');
   const [embyApiKey, setEmbyApiKey] = useState('');
   const [storageRootPath, setStorageRootPath] = useState('');
+  const [tierStoragePaths, setTierStoragePaths] = useState<Record<string, string>>({});
   const [settingsMessage, setSettingsMessage] = useState('');
+  const [tierDetailMessage, setTierDetailMessage] = useState('');
   const [tiers, setTiers] = useState<DesktopTier[]>([]);
   const [actresses, setActresses] = useState<DesktopActress[]>([]);
   const [query, setQuery] = useState('');
@@ -70,13 +83,10 @@ export function App() {
   const [tierLimitRaw, setTierLimitRaw] = useState('');
   const [tierStatus, setTierStatus] = useState('active');
 
-  const [selectedActressIds, setSelectedActressIds] = useState<number[]>([]);
   const [syncTaskState, setSyncTaskState] = useState<TaskState | null>(null);
   const pollRef = useRef<number | null>(null);
   const [activePollingTaskId, setActivePollingTaskId] = useState<string | null>(null);
 
-  const [tierSyncId, setTierSyncId] = useState(1);
-  const [storageTierId, setStorageTierId] = useState(1);
   const [storagePathInput, setStoragePathInput] = useState('');
   const [storageResolved, setStorageResolved] = useState<string | null>(null);
   const [storageFolders, setStorageFolders] = useState<string[] | null>(null);
@@ -111,8 +121,6 @@ export function App() {
     if (tiers.length === 0) return;
     const first = tiers[0].id;
     setTierId((id) => (tiers.some((t) => t.id === id) ? id : first));
-    setTierSyncId((id) => (tiers.some((t) => t.id === id) ? id : first));
-    setStorageTierId((id) => (tiers.some((t) => t.id === id) ? id : first));
   }, [tiers]);
 
   useEffect(() => {
@@ -134,7 +142,7 @@ export function App() {
           setEmbyServerUrl(config.embyServerUrl ?? '');
           setEmbyApiKey(config.embyApiKey ?? '');
           setStorageRootPath(config.storageRootPath ?? '');
-          setStoragePathInput(config.storageRootPath ?? '');
+          setTierStoragePaths(config.tierStoragePaths ?? {});
         }
       }
     })();
@@ -179,7 +187,7 @@ export function App() {
           await loadDashboardData();
         } else if (tab === 'actresses') {
           await loadWorkspaceData(query);
-        } else if (tab === 'tiers' || tab === 'settings') {
+        } else if (tab === 'tiers') {
           await loadTiersOnly();
         }
       } catch (e) {
@@ -188,26 +196,6 @@ export function App() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrap?.configured, bootstrap?.initialized, authenticated, tab]);
-
-  const refreshCurrentTab = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (tab === 'intro') {
-        await loadDashboardData();
-      } else if (tab === 'actresses') {
-        await loadWorkspaceData(query);
-      } else if (tab === 'settings') {
-        await loadTiersOnly();
-      } else {
-        await loadTiersOnly();
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '刷新失败');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const isSyncTaskTerminal = (t: TaskState) =>
     t.status.startsWith('completed') || t.status.startsWith('error:') || t.status === 'error:tier_not_found';
@@ -224,7 +212,11 @@ export function App() {
         if (isSyncTaskTerminal(t)) {
           stopPoll();
           setActivePollingTaskId(null);
-          await Promise.all([loadWorkspaceData(query), loadDashboardData(), loadTiersOnly()]);
+          const reloadActresses =
+            editorView?.kind === 'tier-detail'
+              ? window.desktopApi.listActresses().then((rows) => setActresses(rows))
+              : loadWorkspaceData(query);
+          await Promise.all([reloadActresses, loadDashboardData(), loadTiersOnly()]);
         }
       } catch {
         stopPoll();
@@ -260,58 +252,73 @@ export function App() {
     }
   };
 
-  useEffect(() => {
-    setSelectedActressIds((prev) =>
-      prev.filter((id) => actresses.some((a) => a.id === id && matchesCurrentTierFilter(a))),
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actresses, actressTierFilterId]);
+  const getCachedTierStoragePath = (id: number) => tierStoragePaths[String(id)] ?? storageRootPath;
 
-  const toggleActressSelect = (id: number) => {
-    setSelectedActressIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const runtimeConfigWithPaths = (paths: Record<string, string>): DesktopRuntimeConfig => ({
+    dbMode: 'sqlite',
+    databaseUrl,
+    embyServerUrl: embyServerUrl.trim() || undefined,
+    embyApiKey: embyApiKey.trim() || undefined,
+    tierStoragePaths: compactTierStoragePaths(paths),
+    storageRootPath: storageRootPath.trim() || undefined,
+  });
+
+  const getActressIdsForTier = async (id: number) => {
+    const rows = await window.desktopApi.listActresses();
+    setActresses(rows);
+    return rows.filter((row) => row.tierId === id).map((row) => row.id);
   };
 
-  const onSyncEmbyIds = async () => {
-    if (selectedActressIds.length === 0) {
-      setError('请至少选择一位演员。');
-      return;
-    }
+  const onTierSyncEmbyIds = async (id: number) => {
     setError(null);
     try {
-      const { taskId } = await window.desktopApi.startSyncEmbyIds(selectedActressIds);
+      const ids = await getActressIdsForTier(id);
+      if (ids.length === 0) {
+        setError('当前分级下没有演员。');
+        return;
+      }
+      const { taskId } = await window.desktopApi.startSyncEmbyIds(ids);
       beginPollTask(taskId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '同步失败');
+      setError(e instanceof Error ? e.message : '同步 Emby ID 失败');
     }
   };
 
-  const onSyncMovieCounts = async () => {
-    if (selectedActressIds.length === 0) {
-      setError('请至少选择一位演员。');
-      return;
-    }
+  const onTierBulkVideoSync = async (id: number) => {
     setError(null);
     try {
-      const { taskId } = await window.desktopApi.startSyncMovieCounts(selectedActressIds);
+      const { taskId } = await window.desktopApi.startTierVideoSync(id);
       beginPollTask(taskId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '同步失败');
+      setError(e instanceof Error ? e.message : '分级同步失败');
     }
   };
 
-  const onTierBulkVideoSync = async () => {
+  const onSaveTierStoragePath = async (id: number) => {
+    setSaving(true);
     setError(null);
+    setTierDetailMessage('');
     try {
-      const { taskId } = await window.desktopApi.startTierVideoSync(tierSyncId);
-      beginPollTask(taskId);
+      const nextPaths = { ...tierStoragePaths };
+      const value = storagePathInput.trim();
+      if (value) {
+        nextPaths[String(id)] = value;
+      } else {
+        delete nextPaths[String(id)];
+      }
+      const saved = await window.desktopApi.saveRuntimeConfig(runtimeConfigWithPaths(nextPaths));
+      const savedPaths = saved.tierStoragePaths ?? {};
+      setTierStoragePaths(savedPaths);
+      setStoragePathInput(savedPaths[String(id)] ?? '');
+      setTierDetailMessage(value ? '分级存储地址已保存。' : '分级存储地址已清空。');
     } catch (e) {
-      setError(e instanceof Error ? e.message : '梯队同步失败');
+      setError(e instanceof Error ? e.message : '保存分级存储地址失败');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const onScanStorage = async () => {
+  const onScanStorage = async (id: number) => {
     if (!storagePathInput.trim()) {
       setError('请输入存储目录路径。');
       return;
@@ -321,8 +328,9 @@ export function App() {
     setStorageFolders(null);
     setStorageResolved(null);
     setStorageImportResult(null);
+    setTierDetailMessage('');
     try {
-      const result = await window.desktopApi.scanStorage(storageTierId, storagePathInput);
+      const result = await window.desktopApi.scanStorage(id, storagePathInput);
       setStorageResolved(result.resolvedPath);
       setStorageFolders(result.folders);
     } catch (e) {
@@ -332,7 +340,7 @@ export function App() {
     }
   };
 
-  const onBatchImportStorageFolders = async () => {
+  const onBatchImportStorageFolders = async (id: number) => {
     if (!storageFolders || storageFolders.length === 0) {
       setError('请先扫描文件夹，再执行导入。');
       return;
@@ -340,7 +348,7 @@ export function App() {
     setStorageImporting(true);
     setError(null);
     try {
-      const result = await window.desktopApi.batchImportStorageFolders(storageTierId, storageFolders);
+      const result = await window.desktopApi.batchImportStorageFolders(id, storageFolders);
       setStorageImportResult(result);
       if (result.created.length > 0) {
         setActresses((prev) => {
@@ -359,19 +367,6 @@ export function App() {
       setError(e instanceof Error ? e.message : '批量导入失败');
     } finally {
       setStorageImporting(false);
-    }
-  };
-
-  const onFetchSnapshot = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await window.desktopApi.getHealthSnapshot();
-      setSnapshot(result);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '获取桌面端诊断信息失败');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -405,8 +400,7 @@ export function App() {
     setError(null);
     const result = await window.desktopApi.selectStorageFolder();
     if (result.canceled) return;
-    setStorageRootPath(result.folderPath);
-    setStoragePathInput((current) => current || result.folderPath);
+    setStoragePathInput(result.folderPath);
   };
 
   const onSaveRuntimeSettings = async () => {
@@ -414,18 +408,11 @@ export function App() {
     setError(null);
     setSettingsMessage('');
     try {
-      const config: DesktopRuntimeConfig = {
-        dbMode: 'sqlite',
-        databaseUrl,
-        embyServerUrl: embyServerUrl.trim() || undefined,
-        embyApiKey: embyApiKey.trim() || undefined,
-        storageRootPath: storageRootPath.trim() || undefined,
-      };
-      const saved = await window.desktopApi.saveRuntimeConfig(config);
+      const saved = await window.desktopApi.saveRuntimeConfig(runtimeConfigWithPaths(tierStoragePaths));
       setEmbyServerUrl(saved.embyServerUrl ?? '');
       setEmbyApiKey(saved.embyApiKey ?? '');
       setStorageRootPath(saved.storageRootPath ?? '');
-      setStoragePathInput(saved.storageRootPath ?? storagePathInput);
+      setTierStoragePaths(saved.tierStoragePaths ?? {});
       setSettingsMessage('设置已保存。');
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存设置失败');
@@ -449,10 +436,25 @@ export function App() {
     setEditorView({ kind: 'tier', id: row.id });
   };
 
+  const onOpenTierDetail = async (row: DesktopTier) => {
+    setEditorView({ kind: 'tier-detail', id: row.id });
+    setStoragePathInput(getCachedTierStoragePath(row.id));
+    setStorageResolved(null);
+    setStorageFolders(null);
+    setStorageImportResult(null);
+    setTierDetailMessage('');
+    setError(null);
+    try {
+      setActresses(await window.desktopApi.listActresses());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载分级演员失败');
+    }
+  };
+
   const onSubmitTier = async () => {
     const name = tierName.trim();
     if (!name) {
-      setError('请填写梯队名称。');
+      setError('请填写分级名称。');
       return;
     }
     const limitTrim = tierLimitRaw.trim();
@@ -513,14 +515,14 @@ export function App() {
     } catch (e) {
       setTiers(previousTiers);
       setActresses(previousActresses);
-      setError(e instanceof Error ? e.message : '保存梯队失败');
+      setError(e instanceof Error ? e.message : '保存分级失败');
     } finally {
       setSubmitting(false);
     }
   };
 
   const onDeleteTier = async (id: number) => {
-    if (!window.confirm('确认删除这个梯队？请先移走该梯队下的演员。')) {
+    if (!window.confirm('确认删除这个分级？请先移走该分级下的演员。')) {
       return;
     }
     setSubmitting(true);
@@ -535,7 +537,7 @@ export function App() {
       }
     } catch (e) {
       setTiers(previousTiers);
-      setError(e instanceof Error ? e.message : '删除梯队失败');
+      setError(e instanceof Error ? e.message : '删除分级失败');
     } finally {
       setSubmitting(false);
     }
@@ -568,7 +570,7 @@ export function App() {
         .filter(Boolean),
     };
 
-    const tierNameForInput = tiers.find((t) => t.id === input.tierId)?.name ?? `梯队 #${input.tierId}`;
+    const tierNameForInput = tiers.find((t) => t.id === input.tierId)?.name ?? `分级 #${input.tierId}`;
     const previousActresses = actresses;
     const tempId = editingId === null ? nextTempId() : null;
     const optimisticRow: DesktopActress = {
@@ -673,6 +675,8 @@ export function App() {
   };
 
   const visibleActresses = actresses.filter(matchesCurrentTierFilter);
+  const activeTierDetail = editorView?.kind === 'tier-detail' ? tiers.find((row) => row.id === editorView.id) ?? null : null;
+  const activeTierActresses = activeTierDetail ? actresses.filter((row) => row.tierId === activeTierDetail.id) : [];
 
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
@@ -729,7 +733,7 @@ export function App() {
             {key === 'intro'
               ? '介绍'
               : key === 'tiers'
-                ? '梯队'
+                ? '分级'
                 : key === 'actresses'
                   ? '演员'
                   : '设置'}
@@ -740,11 +744,11 @@ export function App() {
       {editorView?.kind === 'tier' ? (
         <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <button type="button" onClick={() => setEditorView(null)} style={{ marginBottom: 12 }}>
-            返回梯队列表
+            返回分级列表
           </button>
-          <h2 style={{ marginTop: 0 }}>{editorView.id === null ? '新增梯队' : `编辑梯队 #${editorView.id}`}</h2>
+          <h2 style={{ marginTop: 0 }}>{editorView.id === null ? '新增分级' : `编辑分级 #${editorView.id}`}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px 160px', gap: 8 }}>
-            <input placeholder="梯队名称" value={tierName} onChange={(e) => setTierName(e.target.value)} />
+            <input placeholder="分级名称" value={tierName} onChange={(e) => setTierName(e.target.value)} />
             <input
               placeholder="影片上限（空=不限）"
               value={tierLimitRaw}
@@ -757,7 +761,7 @@ export function App() {
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button onClick={() => void onSubmitTier()} disabled={submitting}>
-              {submitting ? '保存中...' : '保存梯队'}
+              {submitting ? '保存中...' : '保存分级'}
             </button>
             <button
               type="button"
@@ -769,6 +773,123 @@ export function App() {
             >
               取消
             </button>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTierDetail ? (
+        <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <button type="button" onClick={() => setEditorView(null)} style={{ marginBottom: 12 }}>
+            返回分级列表
+          </button>
+          <h2 style={{ marginTop: 0 }}>{activeTierDetail.name}</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 16 }}>
+            <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>影片上限</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{activeTierDetail.video_limit === null ? '不限' : activeTierDetail.video_limit}</div>
+            </div>
+            <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>状态</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{tierStatusText(activeTierDetail.status)}</div>
+            </div>
+            <div style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>演员数</div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{activeTierDetail.actressCount}</div>
+            </div>
+          </div>
+
+          <h3 style={{ marginTop: 0 }}>分级批量同步</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            <button type="button" onClick={() => void onTierSyncEmbyIds(activeTierDetail.id)} disabled={Boolean(activePollingTaskId)}>
+              批量补全 Emby ID
+            </button>
+            <button type="button" onClick={() => void onTierBulkVideoSync(activeTierDetail.id)} disabled={Boolean(activePollingTaskId)}>
+              批量刷新影片数量
+            </button>
+          </div>
+
+          <h3>分级存储地址</h3>
+          <div style={{ display: 'grid', gap: 10, maxWidth: 820 }}>
+            <label>
+              存储目录
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  style={{ width: '100%' }}
+                  placeholder="例如 /Volumes/JAV_output/S"
+                  value={storagePathInput}
+                  onChange={(e) => setStoragePathInput(e.target.value)}
+                />
+                <button type="button" onClick={() => void onSelectStorageFolder()} style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  选择目录
+                </button>
+              </div>
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              <button type="button" onClick={() => void onSaveTierStoragePath(activeTierDetail.id)} disabled={saving}>
+                {saving ? '保存中...' : '保存地址'}
+              </button>
+              <button type="button" onClick={() => void onScanStorage(activeTierDetail.id)} disabled={loading}>
+                {loading ? '扫描中...' : '扫描文件夹'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void onBatchImportStorageFolders(activeTierDetail.id)}
+                disabled={storageImporting || !storageFolders || storageFolders.length === 0}
+              >
+                {storageImporting ? '导入中...' : '批量导入为演员'}
+              </button>
+              {tierDetailMessage ? <span style={{ color: '#16a34a' }}>{tierDetailMessage}</span> : null}
+            </div>
+          </div>
+          {storageResolved ? (
+            <p style={{ marginTop: 12, marginBottom: 0 }}>
+              <strong>实际路径：</strong> <code>{storageResolved}</code>
+            </p>
+          ) : null}
+          {storageImportResult ? (
+            <p style={{ marginTop: 8, color: '#374151' }}>
+              已导入 {storageImportResult.created.length} 项，跳过已有 {storageImportResult.skippedExisting.length} 项，跳过空名称 {storageImportResult.skippedEmpty} 项。
+            </p>
+          ) : null}
+          {storageFolders && storageFolders.length > 0 ? (
+            <ul style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', paddingLeft: 20 }}>
+              {storageFolders.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          ) : storageFolders && storageFolders.length === 0 ? (
+            <p style={{ marginTop: 8, color: '#6b7280' }}>没有找到一级子文件夹，或该路径不是目录。</p>
+          ) : null}
+
+          <h3>当前分级演员</h3>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f9fafb' }}>
+                  <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>名称</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>影片</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>Emby ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeTierActresses.map((row) => (
+                  <tr key={row.id}>
+                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.id}</td>
+                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.name}</td>
+                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.video_count}</td>
+                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.embyIds.join(', ') || '-'}</td>
+                  </tr>
+                ))}
+                {activeTierActresses.length === 0 ? (
+                  <tr>
+                    <td style={{ padding: 10 }} colSpan={4}>
+                      当前分级下没有演员。
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
         </section>
       ) : null}
@@ -819,7 +940,7 @@ export function App() {
         </section>
       ) : null}
 
-      {!editorView && syncTaskState ? (
+      {(!editorView || editorView.kind === 'tier-detail') && syncTaskState ? (
         <section style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
             <strong>后台任务：</strong> {syncTaskState.status}{' '}
@@ -904,12 +1025,12 @@ export function App() {
             </div>
           </div>
 
-          <h3>梯队分布</h3>
+          <h3>分级分布</h3>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: 8 }}>梯队</th>
+	                  <th style={{ textAlign: 'left', padding: 8 }}>分级</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>人数</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>影片</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>占比</th>
@@ -959,9 +1080,9 @@ export function App() {
       {!editorView && tab === 'tiers' ? (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ margin: 0 }}>梯队</h2>
+            <h2 style={{ margin: 0 }}>分级</h2>
             <button type="button" onClick={onCreateTier}>
-              新增梯队
+              新增分级
             </button>
           </div>
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
@@ -970,10 +1091,11 @@ export function App() {
                 <tr style={{ background: '#f9fafb' }}>
                   <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>名称</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>上限</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>状态</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>演员数</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
+	                  <th style={{ textAlign: 'left', padding: 8 }}>上限</th>
+	                  <th style={{ textAlign: 'left', padding: 8 }}>状态</th>
+	                  <th style={{ textAlign: 'left', padding: 8 }}>演员数</th>
+	                  <th style={{ textAlign: 'left', padding: 8 }}>存储地址</th>
+	                  <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -984,11 +1106,15 @@ export function App() {
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
                       {row.video_limit === null ? '∞' : row.video_limit}
                     </td>
-                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{tierStatusText(row.status)}</td>
-                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.actressCount}</td>
-                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
-                      <button type="button" onClick={() => onEditTier(row)} style={{ marginRight: 8 }}>
-                        编辑
+	                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{tierStatusText(row.status)}</td>
+	                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.actressCount}</td>
+	                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{tierStoragePaths[String(row.id)] || '未设置'}</td>
+	                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
+	                      <button type="button" onClick={() => void onOpenTierDetail(row)} style={{ marginRight: 8 }}>
+	                        详情
+	                      </button>
+	                      <button type="button" onClick={() => onEditTier(row)} style={{ marginRight: 8 }}>
+	                        编辑
                       </button>
                       <button type="button" onClick={() => void onDeleteTier(row.id)} disabled={submitting}>
                         删除
@@ -1022,7 +1148,7 @@ export function App() {
               onChange={(e) => setActressTierFilterId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
               style={{ minWidth: 180 }}
             >
-              <option value="all">全部梯队</option>
+              <option value="all">全部分级</option>
               {tiers.map((tier) => (
                 <option key={tier.id} value={tier.id}>
                   {tier.name}
@@ -1034,42 +1160,13 @@ export function App() {
             </button>
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              marginBottom: 12,
-              alignItems: 'center',
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setSelectedActressIds(visibleActresses.map((a) => a.id))}
-              disabled={visibleActresses.length === 0}
-            >
-              全选当前列表
-            </button>
-            <button type="button" onClick={() => setSelectedActressIds([])}>
-              清空选择
-            </button>
-            <span style={{ color: '#6b7280' }}>已选 {selectedActressIds.length} 项</span>
-            <button type="button" onClick={() => void onSyncEmbyIds()}>
-              同步 Emby ID
-            </button>
-            <button type="button" onClick={() => void onSyncMovieCounts()}>
-              同步影片数量
-            </button>
-          </div>
-
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ padding: 8, width: 40 }} />
                   <th style={{ textAlign: 'left', padding: 8 }}>ID</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>名称</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>梯队</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>分级</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>影片</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>Emby ID</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>操作</th>
@@ -1078,13 +1175,6 @@ export function App() {
               <tbody>
                 {visibleActresses.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedActressIds.includes(row.id)}
-                        onChange={() => toggleActressSelect(row.id)}
-                      />
-                    </td>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.id}</td>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.name}</td>
                     <td style={{ padding: 8, borderTop: '1px solid #f3f4f6' }}>{row.tierName}</td>
@@ -1102,7 +1192,7 @@ export function App() {
                 ))}
                 {visibleActresses.length === 0 ? (
                   <tr>
-                    <td style={{ padding: 10 }} colSpan={7}>
+                    <td style={{ padding: 10 }} colSpan={6}>
                       没有找到演员。
                     </td>
                   </tr>
@@ -1111,74 +1201,6 @@ export function App() {
             </table>
           </section>
         </>
-      ) : null}
-
-      {!editorView && tab === 'settings' ? (
-        <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <h3 style={{ marginTop: 0 }}>存储与工具</h3>
-          <p style={{ marginTop: 0, color: '#6b7280', fontSize: 14 }}>
-            读取指定目录下的一级文件夹名称，并将未入库的演员名称批量导入当前梯队。
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-            <button type="button" onClick={() => void refreshCurrentTab()} disabled={loading}>
-              {loading ? '刷新中...' : '刷新当前数据'}
-            </button>
-            <button type="button" onClick={() => void onFetchSnapshot()} disabled={loading}>
-              运行诊断
-            </button>
-            <button type="button" onClick={() => void window.desktopApi.openUserDataFolder()}>
-              打开数据目录
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              梯队
-              <select value={storageTierId} onChange={(e) => setStorageTierId(Number(e.target.value))}>
-                {tiers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <input
-            style={{ width: '100%', maxWidth: 560, marginBottom: 8, display: 'block' }}
-            placeholder="目录路径，例如 /Volumes/share"
-            value={storagePathInput}
-            onChange={(e) => setStoragePathInput(e.target.value)}
-          />
-          <button type="button" onClick={() => void onScanStorage()} disabled={loading}>
-            {loading ? '扫描中...' : '扫描文件夹'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void onBatchImportStorageFolders()}
-            disabled={storageImporting || !storageFolders || storageFolders.length === 0}
-            style={{ marginLeft: 8 }}
-          >
-            {storageImporting ? '导入中...' : '批量导入为演员'}
-          </button>
-          {storageResolved ? (
-            <p style={{ marginTop: 12, marginBottom: 0 }}>
-              <strong>实际路径：</strong> <code>{storageResolved}</code>
-            </p>
-          ) : null}
-          {storageImportResult ? (
-            <p style={{ marginTop: 8, color: '#374151' }}>
-              已导入 {storageImportResult.created.length} 项，跳过已有 {storageImportResult.skippedExisting.length} 项，跳过空名称 {storageImportResult.skippedEmpty} 项。
-            </p>
-          ) : null}
-          {storageFolders && storageFolders.length > 0 ? (
-            <ul style={{ marginTop: 8, maxHeight: 320, overflow: 'auto', paddingLeft: 20 }}>
-              {storageFolders.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          ) : storageFolders && storageFolders.length === 0 ? (
-            <p style={{ marginTop: 8, color: '#6b7280' }}>没有找到一级子文件夹，或该路径不是目录。</p>
-          ) : null}
-        </section>
       ) : null}
 
       {!editorView && tab === 'settings' ? (
@@ -1213,20 +1235,6 @@ export function App() {
                 placeholder="用于演员 ID 与影片数量同步"
               />
             </label>
-            <label>
-              默认存储目录
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  style={{ width: '100%' }}
-                  value={storageRootPath}
-                  onChange={(e) => setStorageRootPath(e.target.value)}
-                  placeholder="例如 /Volumes/JAV_output"
-                />
-                <button type="button" onClick={() => void onSelectStorageFolder()} style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                  选择目录
-                </button>
-              </div>
-            </label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button type="button" onClick={() => void onSaveRuntimeSettings()} disabled={saving}>
                 {saving ? '保存中...' : '保存设置'}
@@ -1238,11 +1246,6 @@ export function App() {
       ) : null}
 
       {error ? <p style={{ color: '#dc2626' }}>{error}</p> : null}
-      {snapshot ? (
-        <pre style={{ marginTop: 16, padding: 12, background: '#111827', color: '#f9fafb', borderRadius: 8 }}>
-          {JSON.stringify(snapshot, null, 2)}
-        </pre>
-      ) : null}
     </main>
   );
 }
