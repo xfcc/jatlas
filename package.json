@@ -7,7 +7,7 @@
     "dev": "npm run desktop:dev",
     "build": "npm run desktop:build",
     "start": "npm run desktop:start",
-    "lint": "eslint src scripts --ext .ts --max-warnings 0",
+    "lint": "eslint src scripts tests --ext .ts --max-warnings 0",
     "postinstall": "prisma generate",
     "test": "jest",
     "desktop:build:electron": "tsc -p apps/desktop/tsconfig.electron.json",

@@ -1200,7 +1200,7 @@ export function App() {
                 style={{ width: '100%' }}
                 value={embyServerUrl}
                 onChange={(e) => setEmbyServerUrl(e.target.value)}
-                placeholder="例如 http://192.168.1.10:8096"
+                placeholder="例如 http://emby.local:8096"
               />
             </label>
             <label>
