@@ -1,13 +1,21 @@
 ---
 name: jatlas-dict-keeper
-description: Use when working in JATLAS and the task involves requirements, feature changes, implementation decisions, handoff notes, or periodic conversation summaries.
+description: Use when working in JATLAS and the task involves Chinese project records for requirements, feature changes, implementation decisions, handoff notes, or periodic conversation summaries.
 ---
 
 # JATLAS Dict Keeper
 
-JATLAS preserves important project thinking as Markdown in `dict/`. Use this skill to keep requirements, changes, decisions, and handoff context explicit and durable.
+JATLAS uses Markdown records in `dict/` to make project thinking visible to both people and future AI agents. Use this skill to preserve requirements, changes, decisions, and handoff context as clear Chinese project records.
 
 `dict/` is a local-only project memory folder and is intentionally ignored by Git.
+
+## Language Rule
+
+Write `dict/` records in Chinese by default.
+
+Use English only when it is part of code, command names, file paths, package names, API names, error messages, commit/branch names, or exact UI copy that must stay English.
+
+Do not generate English section templates such as `Background`, `Scope`, or `Next Steps` for normal JATLAS records. Use natural Chinese headings and Chinese prose so a person can quickly understand what happened without reading the chat history.
 
 ## Project Record Path
 
@@ -28,7 +36,7 @@ Existing top-level `dict/*.md` files can remain where they are unless the user a
 
 1. Before substantial work, inspect relevant existing records in `dict/`.
 2. During the task, identify decisions or conclusions that should survive beyond chat history.
-3. Create or update a Markdown record when the work introduces a requirement, change, decision, handoff, or useful session summary.
+3. Create or update a Chinese Markdown record when the work introduces a requirement, change, decision, handoff, or useful session summary.
 4. Before final response, verify whether the session produced durable context. If yes, save it in `dict/`.
 5. In the final response, mention the exact record file created or updated.
 
@@ -65,21 +73,29 @@ Use lowercase hyphenated topics.
 Prefer this shape, deleting sections that do not apply:
 
 ```md
-# Title
+# 标题
 
-## Background
+## 背景
 
-## Current Decision or Requirement
+## 当前结论或需求
 
-## Scope
+## 适用范围
 
-## Implementation Notes
+## 执行说明
 
-## Acceptance Criteria or Verification
+## 验收或验证
 
-## Open Questions
+## 未决问题
 
-## Next Steps
+## 后续动作
 ```
 
-Keep records concise, factual, and useful to a future agent reading the repository without chat history.
+Keep records concise, factual, and useful to a future person or AI agent reading the repository without chat history.
+
+## Writing Style
+
+- Prefer direct Chinese descriptions over translated template language.
+- Explain why the decision matters, not only what file changed.
+- Preserve enough context for a future reader to recover the reasoning.
+- Keep commands, paths, filenames, and code identifiers exact.
+- If the user discussed the topic in Chinese, summarize the conclusion in Chinese instead of translating it into English.

@@ -8,6 +8,8 @@ Treat `dict/` as the project memory layer. Do not rely on chat history alone for
 
 `dict/` is local-only and intentionally ignored by Git. Do not assume records in this folder will be pushed to GitHub.
 
+`dict/` records should be written in Chinese by default. The purpose is to make project thinking visible and understandable to both people and future AI agents. Use English only for code identifiers, commands, file paths, package names, API names, error messages, branch/commit names, or exact UI copy that must remain English.
+
 ## When to Write to `dict/`
 
 Create or update a Markdown record when work introduces any of the following:
@@ -55,13 +57,13 @@ Keep the short topic lowercase, concise, and hyphenated.
 
 A useful record should usually include:
 
-- Background
-- Current Decision or Requirement
-- Scope
-- Implementation Notes
-- Acceptance Criteria or Verification
-- Open Questions
-- Next Steps
+- 背景
+- 当前结论或需求
+- 适用范围
+- 执行说明
+- 验收或验证
+- 未决问题
+- 后续动作
 
 Skip sections that do not apply, but do not skip the decision or requirement itself.
 
