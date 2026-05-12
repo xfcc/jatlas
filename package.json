@@ -16,7 +16,10 @@
     "desktop:start": "electron apps/desktop/dist-electron/electron/main.js",
     "desktop:dev": "concurrently -k -n electron-ts,renderer,electron -c cyan,magenta,green \"tsc -p apps/desktop/tsconfig.electron.json --watch\" \"vite --config apps/desktop/vite.config.ts\" \"wait-on tcp:5173 file:apps/desktop/dist-electron/electron/main.js && cross-env DESKTOP_RENDERER_URL=http://127.0.0.1:5173 electron apps/desktop/dist-electron/electron/main.js\"",
     "desktop:prepare-prisma-engines": "tsx scripts/ensure-prisma-engines.ts",
-    "desktop:pack": "npm run desktop:prepare-prisma-engines && npm run desktop:build && electron-builder"
+    "desktop:pack": "npm run desktop:prepare-prisma-engines && npm run desktop:build && electron-builder",
+    "desktop:pack:win": "npm run desktop:pack -- --win portable --x64",
+    "desktop:pack:mac": "npm run desktop:pack -- --mac zip --arm64",
+    "desktop:pack:portable": "npm run desktop:pack:win && npm run desktop:pack:mac"
   },
   "dependencies": {
     "@prisma/client": "^5.11.0",
