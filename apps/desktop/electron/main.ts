@@ -25,6 +25,7 @@ import {
   updateDesktopActress,
   updateDesktopTier,
 } from '../core/desktopDataService';
+import { startDesktopStorageImportTask } from '../core/desktopTaskImportService';
 import { getDesktopTaskState, requestCancelDesktopTask } from '../core/desktopTaskStore';
 import { resetDesktopPrismaClient } from '../core/prismaClient';
 import {
@@ -229,6 +230,11 @@ function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.START_TIER_VIDEO_SYNC, async (_event, tierId: number) => {
     ensureAuthenticated();
     return startDesktopTierVideoCountSyncTask(tierId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.START_STORAGE_IMPORT, async (_event, tierId: number, folderNames: string[]) => {
+    ensureAuthenticated();
+    return startDesktopStorageImportTask(tierId, folderNames);
   });
 
   ipcMain.handle(IPC_CHANNELS.GET_SYNC_TASK, async (_event, taskId: string) => {

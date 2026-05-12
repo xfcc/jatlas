@@ -5,12 +5,12 @@ import type {
   DesktopActressInput,
   DesktopAssetLogChartRow,
   DesktopDashboardStats,
-  DesktopStorageBatchImportResult,
   DesktopTier,
   DesktopTierInput,
 } from '../../core/desktopDataService';
 import type { DesktopRuntimeConfig } from '../../core/configService';
-import type { TaskState } from '../../core/desktopTaskStore';
+import type { TaskActivityEvent, TaskState } from '../../core/desktopTaskStore';
+import { getActivityIndicatorState } from './activityIndicatorState';
 
 type WorkspaceTab = 'intro' | 'actresses' | 'tiers' | 'settings';
 type EditorView =
@@ -18,6 +18,19 @@ type EditorView =
   | { kind: 'tier'; id: number | null }
   | { kind: 'tier-detail'; id: number }
   | null;
+
+type ActivitySnapshot = {
+  activityId: string;
+  title: string;
+  scope?: string;
+  status: string;
+  progress: number;
+  total: number;
+  summaryText?: string;
+  events: TaskActivityEvent[];
+  startedAt?: string;
+  finishedAt?: string;
+};
 
 const initialDatabaseUrl = 'file:./jatlas-desktop.db';
 
@@ -45,6 +58,115 @@ function compactTierStoragePaths(paths: Record<string, string>) {
       .filter(([, value]) => value.length > 0),
   );
   return Object.keys(clean).length > 0 ? clean : undefined;
+}
+
+function isTaskTerminal(t: TaskState) {
+  return t.status.startsWith('completed') || t.status.startsWith('error:') || t.status === 'error:tier_not_found';
+}
+
+function resultLabel(result: TaskActivityEvent['result']) {
+  if (result === 'created') return '新增';
+  if (result === 'updated') return '更新';
+  if (result === 'unchanged') return '无变化';
+  if (result === 'skipped') return '跳过';
+  if (result === 'error') return '失败';
+  return '完成';
+}
+
+function activityStatusText(activity: ActivitySnapshot) {
+  if (activity.status === 'processing') return '执行中';
+  if (activity.status === 'starting') return '准备中';
+  if (activity.status === 'completed') return activity.events.some((event) => event.result === 'error') ? '存在失败' : '已完成';
+  if (activity.status === 'completed:cancelled') return '已取消';
+  if (activity.status.startsWith('error:')) return '失败';
+  return activity.status;
+}
+
+function normalizeTaskEvent(event: NonNullable<TaskState['events']>[number], fallbackIndex: number): TaskActivityEvent {
+  return {
+    id: event.id ?? `${event.action ?? 'event'}-${fallbackIndex}`,
+    index: event.index ?? fallbackIndex,
+    timestamp: event.timestamp ?? new Date().toISOString(),
+    subjectName: event.subjectName ?? event.name ?? `#${fallbackIndex}`,
+    subjectId: event.subjectId ?? event.actressId,
+    actressId: event.actressId,
+    name: event.name,
+    action: event.action ?? '处理',
+    result: event.result === 'success' ? 'success' : event.result,
+    before: event.before ?? event.oldCount,
+    after: event.after ?? event.newCount,
+    oldCount: event.oldCount,
+    newCount: event.newCount,
+    delta: event.delta,
+    detail: event.detail,
+    retryable: event.retryable,
+  };
+}
+
+function formatNumberValue(value: number | string | null | undefined) {
+  return value === null || value === undefined || value === '' ? '-' : String(value);
+}
+
+function formatDelta(delta: number | null | undefined) {
+  if (delta === null || delta === undefined) return '';
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
+function taskSummaryText(task: TaskState) {
+  const summary = task.summary;
+  if (!summary) return undefined;
+  if (task.kind === 'storage-import') {
+    return `扫描 ${summary.total ?? task.total} 个文件夹，新增 ${summary.created ?? 0} 个演员，跳过已有 ${summary.skippedExisting ?? 0} 个，跳过空名称 ${summary.skippedEmpty ?? 0} 个，失败 ${summary.error ?? 0} 个。`;
+  }
+  if (task.kind === 'video-count-sync') {
+    return `刷新 ${summary.total ?? task.total} 位演员，影片数量净增 ${summary.netDelta ?? 0}；${summary.changedCount ?? 0} 位有变化，${summary.unchangedCount ?? 0} 位无变化，${summary.skipped ?? 0} 位跳过，${summary.error ?? 0} 位失败。`;
+  }
+  return `已处理 ${task.progress} / ${task.total}。`;
+}
+
+function taskToActivitySnapshot(task: TaskState, fallbackId: string): ActivitySnapshot {
+  return {
+    activityId: task.taskId ?? fallbackId,
+    title: task.title ?? '后台操作',
+    scope: task.scope,
+    status: task.status,
+    progress: task.progress,
+    total: task.total,
+    summaryText: taskSummaryText(task),
+    events: (task.events ?? []).map((event, index) => normalizeTaskEvent(event, index + 1)),
+    startedAt: task.startedAt,
+    finishedAt: task.finishedAt,
+  };
+}
+
+function createSimpleActivity(
+  title: string,
+  detail: string,
+  result: TaskActivityEvent['result'] = 'success',
+  scope?: string,
+): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const event: TaskActivityEvent = {
+    id: `local-${timestamp}-${Math.random().toString(36).slice(2, 7)}`,
+    index: 1,
+    timestamp,
+    subjectName: scope ?? title,
+    action: title,
+    result,
+    detail,
+  };
+  return {
+    activityId: event.id,
+    title,
+    scope,
+    status: result === 'error' ? 'error:operation' : 'completed',
+    progress: 1,
+    total: 1,
+    summaryText: detail,
+    events: [event],
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
 }
 
 export function App() {
@@ -86,12 +208,15 @@ export function App() {
   const [syncTaskState, setSyncTaskState] = useState<TaskState | null>(null);
   const pollRef = useRef<number | null>(null);
   const [activePollingTaskId, setActivePollingTaskId] = useState<string | null>(null);
+  const [activityPanelOpen, setActivityPanelOpen] = useState(false);
+  const activityPanelOpenRef = useRef(false);
+  const [activityUnread, setActivityUnread] = useState(false);
+  const [activityHistory, setActivityHistory] = useState<ActivitySnapshot[]>([]);
+  const archivedTaskIdsRef = useRef<Set<string>>(new Set());
 
   const [storagePathInput, setStoragePathInput] = useState('');
   const [storageResolved, setStorageResolved] = useState<string | null>(null);
   const [storageFolders, setStorageFolders] = useState<string[] | null>(null);
-  const [storageImporting, setStorageImporting] = useState(false);
-  const [storageImportResult, setStorageImportResult] = useState<DesktopStorageBatchImportResult | null>(null);
   const tempIdRef = useRef(-1);
 
   const stopPoll = () => {
@@ -103,9 +228,34 @@ export function App() {
 
   useEffect(() => () => stopPoll(), []);
 
+  useEffect(() => {
+    activityPanelOpenRef.current = activityPanelOpen;
+    if (activityPanelOpen) {
+      setActivityUnread(false);
+    }
+  }, [activityPanelOpen]);
+
   const nextTempId = () => {
     tempIdRef.current -= 1;
     return tempIdRef.current;
+  };
+
+  const markActivityChanged = () => {
+    if (!activityPanelOpenRef.current) {
+      setActivityUnread(true);
+    }
+  };
+
+  const appendActivity = (activity: ActivitySnapshot) => {
+    setActivityHistory((prev) => [activity, ...prev.filter((item) => item.activityId !== activity.activityId)].slice(0, 30));
+    markActivityChanged();
+  };
+
+  const archiveTaskActivity = (task: TaskState, fallbackId: string) => {
+    const id = task.taskId ?? fallbackId;
+    if (archivedTaskIdsRef.current.has(id)) return;
+    archivedTaskIdsRef.current.add(id);
+    appendActivity(taskToActivitySnapshot(task, id));
   };
 
   const matchesCurrentQuery = (value: string) => {
@@ -197,21 +347,32 @@ export function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bootstrap?.configured, bootstrap?.initialized, authenticated, tab]);
 
-  const isSyncTaskTerminal = (t: TaskState) =>
-    t.status.startsWith('completed') || t.status.startsWith('error:') || t.status === 'error:tier_not_found';
-
   const beginPollTask = (taskId: string) => {
     stopPoll();
     setActivePollingTaskId(taskId);
-    setSyncTaskState({ progress: 0, total: 0, status: '启动中...' });
+    archivedTaskIdsRef.current.delete(taskId);
+    setSyncTaskState({
+      taskId,
+      title: '后台操作',
+      progress: 0,
+      total: 0,
+      status: 'starting',
+      startedAt: new Date().toISOString(),
+      events: [],
+    });
+    markActivityChanged();
     const tick = async () => {
       try {
         const t = await window.desktopApi.getSyncTask(taskId);
         setSyncTaskState(t);
+        if (t) {
+          markActivityChanged();
+        }
         if (!t) return;
-        if (isSyncTaskTerminal(t)) {
+        if (isTaskTerminal(t)) {
           stopPoll();
           setActivePollingTaskId(null);
+          archiveTaskActivity(t, taskId);
           const reloadActresses =
             editorView?.kind === 'tier-detail'
               ? window.desktopApi.listActresses().then((rows) => setActresses(rows))
@@ -241,7 +402,8 @@ export function App() {
   const onRetryFailedTierSync = async () => {
     const ids = (syncTaskState?.events ?? [])
       .filter((e) => e.result === 'error')
-      .map((e) => e.actressId);
+      .map((e) => e.actressId)
+      .filter((id): id is number => typeof id === 'number');
     if (ids.length === 0) return;
     setError(null);
     try {
@@ -311,8 +473,17 @@ export function App() {
       setTierStoragePaths(savedPaths);
       setStoragePathInput(savedPaths[String(id)] ?? '');
       setTierDetailMessage(value ? '分级存储地址已保存。' : '分级存储地址已清空。');
+      appendActivity(
+        createSimpleActivity(
+          '保存分级存储地址',
+          value ? `已保存存储地址：${value}` : '已清空该分级的存储地址。',
+          'success',
+          activeTierDetail ? `${activeTierDetail.name} 分级` : undefined,
+        ),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存分级存储地址失败');
+      appendActivity(createSimpleActivity('保存分级存储地址', e instanceof Error ? e.message : '保存失败', 'error'));
     } finally {
       setSaving(false);
     }
@@ -327,14 +498,22 @@ export function App() {
     setError(null);
     setStorageFolders(null);
     setStorageResolved(null);
-    setStorageImportResult(null);
     setTierDetailMessage('');
     try {
       const result = await window.desktopApi.scanStorage(id, storagePathInput);
       setStorageResolved(result.resolvedPath);
       setStorageFolders(result.folders);
+      appendActivity(
+        createSimpleActivity(
+          '扫描存储地址',
+          `扫描到 ${result.folders.length} 个一级文件夹。`,
+          'success',
+          activeTierDetail ? `${activeTierDetail.name} 分级` : undefined,
+        ),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : '扫描失败');
+      appendActivity(createSimpleActivity('扫描存储地址', e instanceof Error ? e.message : '扫描失败', 'error'));
     } finally {
       setLoading(false);
     }
@@ -345,28 +524,14 @@ export function App() {
       setError('请先扫描文件夹，再执行导入。');
       return;
     }
-    setStorageImporting(true);
     setError(null);
     try {
-      const result = await window.desktopApi.batchImportStorageFolders(id, storageFolders);
-      setStorageImportResult(result);
-      if (result.created.length > 0) {
-        setActresses((prev) => {
-          const existingIds = new Set(prev.map((row) => row.id));
-          const merged = [...prev];
-          for (const row of result.created) {
-            if (!existingIds.has(row.id) && matchesCurrentQuery(row.name)) {
-              merged.push(row);
-            }
-          }
-          return merged.sort((a, b) => a.id - b.id);
-        });
-        await Promise.all([loadTiersOnly(), loadDashboardData()]);
-      }
+      const { taskId } = await window.desktopApi.startStorageImport(id, storageFolders);
+      setTierDetailMessage('导入任务已开始，可在右上角操作动态中查看进度。');
+      beginPollTask(taskId);
     } catch (e) {
       setError(e instanceof Error ? e.message : '批量导入失败');
-    } finally {
-      setStorageImporting(false);
+      appendActivity(createSimpleActivity('批量导入演员', e instanceof Error ? e.message : '批量导入失败', 'error'));
     }
   };
 
@@ -414,8 +579,10 @@ export function App() {
       setStorageRootPath(saved.storageRootPath ?? '');
       setTierStoragePaths(saved.tierStoragePaths ?? {});
       setSettingsMessage('设置已保存。');
+      appendActivity(createSimpleActivity('保存设置', '数据库与 Emby 设置已保存。'));
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存设置失败');
+      appendActivity(createSimpleActivity('保存设置', e instanceof Error ? e.message : '保存设置失败', 'error'));
     } finally {
       setSaving(false);
     }
@@ -441,7 +608,6 @@ export function App() {
     setStoragePathInput(getCachedTierStoragePath(row.id));
     setStorageResolved(null);
     setStorageFolders(null);
-    setStorageImportResult(null);
     setTierDetailMessage('');
     setError(null);
     try {
@@ -502,12 +668,14 @@ export function App() {
             .map((row) => (row.id === optimisticTier.id ? created : row))
             .sort((a, b) => a.id - b.id),
         );
+        appendActivity(createSimpleActivity('新增分级', `已创建分级 ${created.name}。`, 'created', `${created.name} 分级`));
       } else {
         const updated = await window.desktopApi.updateTier(tierEditingId, input);
         setTiers((prev) => prev.map((row) => (row.id === tierEditingId ? updated : row)));
         setActresses((prev) =>
           prev.map((row) => (row.tierId === tierEditingId ? { ...row, tierName: updated.name } : row)),
         );
+        appendActivity(createSimpleActivity('编辑分级', `已更新分级 ${updated.name}。`, 'updated', `${updated.name} 分级`));
       }
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
       resetTierForm();
@@ -516,6 +684,7 @@ export function App() {
       setTiers(previousTiers);
       setActresses(previousActresses);
       setError(e instanceof Error ? e.message : '保存分级失败');
+      appendActivity(createSimpleActivity('保存分级', e instanceof Error ? e.message : '保存分级失败', 'error'));
     } finally {
       setSubmitting(false);
     }
@@ -532,12 +701,14 @@ export function App() {
       setTiers((prev) => prev.filter((row) => row.id !== id));
       await window.desktopApi.deleteTier(id);
       await Promise.all([loadTiersOnly(), loadDashboardData(), tab === 'actresses' ? loadWorkspaceData(query) : Promise.resolve()]);
+      appendActivity(createSimpleActivity('删除分级', `已删除分级 #${id}。`, 'success', `分级 #${id}`));
       if (tierEditingId === id) {
         resetTierForm();
       }
     } catch (e) {
       setTiers(previousTiers);
       setError(e instanceof Error ? e.message : '删除分级失败');
+      appendActivity(createSimpleActivity('删除分级', e instanceof Error ? e.message : '删除分级失败', 'error', `分级 #${id}`));
     } finally {
       setSubmitting(false);
     }
@@ -604,6 +775,9 @@ export function App() {
           }
           return replaced.sort((a, b) => a.id - b.id);
         });
+        appendActivity(
+          createSimpleActivity('新增演员', `已创建演员 #${created.id}，归入 ${created.tierName} 分级。`, 'created', created.name),
+        );
       } else {
         const updated = await window.desktopApi.updateActress(editingId, input);
         setActresses((prev) =>
@@ -612,6 +786,7 @@ export function App() {
             .filter((row) => row.id !== updated.id || (matchesCurrentQuery(row.name) && matchesCurrentTierFilter(row)))
             .sort((a, b) => a.id - b.id),
         );
+        appendActivity(createSimpleActivity('编辑演员', `已更新演员 #${updated.id}。`, 'updated', updated.name));
       }
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
       resetForm();
@@ -619,6 +794,7 @@ export function App() {
     } catch (e) {
       setActresses(previousActresses);
       setError(e instanceof Error ? e.message : '保存演员失败');
+      appendActivity(createSimpleActivity('保存演员', e instanceof Error ? e.message : '保存演员失败', 'error', input.name));
     } finally {
       setSubmitting(false);
     }
@@ -647,16 +823,19 @@ export function App() {
     setSubmitting(true);
     setError(null);
     const previousActresses = actresses;
+    const target = actresses.find((row) => row.id === id);
     try {
       setActresses((prev) => prev.filter((row) => row.id !== id));
       await window.desktopApi.deleteActress(id);
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
+      appendActivity(createSimpleActivity('删除演员', `已删除演员 #${id}。`, 'success', target?.name ?? `演员 #${id}`));
       if (editingId === id) {
         resetForm();
       }
     } catch (e) {
       setActresses(previousActresses);
       setError(e instanceof Error ? e.message : '删除演员失败');
+      appendActivity(createSimpleActivity('删除演员', e instanceof Error ? e.message : '删除演员失败', 'error', target?.name ?? `演员 #${id}`));
     } finally {
       setSubmitting(false);
     }
@@ -677,6 +856,20 @@ export function App() {
   const visibleActresses = actresses.filter(matchesCurrentTierFilter);
   const activeTierDetail = editorView?.kind === 'tier-detail' ? tiers.find((row) => row.id === editorView.id) ?? null : null;
   const activeTierActresses = activeTierDetail ? actresses.filter((row) => row.tierId === activeTierDetail.id) : [];
+  const activeActivity =
+    syncTaskState && !isTaskTerminal(syncTaskState)
+      ? taskToActivitySnapshot(syncTaskState, activePollingTaskId ?? syncTaskState.taskId ?? 'active-task')
+      : null;
+  const visibleActivities = activeActivity ? [activeActivity, ...activityHistory] : activityHistory;
+  const hasRunningActivity = Boolean(activeActivity);
+  const hasFailedActivity = visibleActivities.some(
+    (activity) => activity.status.startsWith('error:') || activity.events.some((event) => event.result === 'error'),
+  );
+  const activityIndicator = getActivityIndicatorState({
+    hasRunningActivity,
+    hasFailedActivity,
+    hasUnreadActivity: activityUnread,
+  });
 
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
@@ -713,8 +906,95 @@ export function App() {
     <main className="app-shell workspace-shell" style={{ fontFamily: 'sans-serif', padding: 24 }}>
       <h1 style={{ marginTop: 0 }}>JATLAS 资产控制台</h1>
       <p style={{ color: '#4b5563' }}>演员分级台账、Emby 对账与 NAS 存储扫描。</p>
+      <div className="activity-launcher">
+        <button
+          type="button"
+          className={activityIndicator.classNames.join(' ')}
+          aria-label={activityIndicator.ariaLabel}
+          title={activityIndicator.title}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setActivityPanelOpen((open) => !open);
+            setActivityUnread(false);
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M5 7h14M5 12h10M5 17h14" />
+          </svg>
+        </button>
+        {activityPanelOpen ? (
+          <>
+            <button
+              type="button"
+              className="activity-panel-backdrop"
+              aria-label="关闭操作动态"
+              onMouseDown={() => setActivityPanelOpen(false)}
+            />
+            <aside className="activity-panel" aria-label="操作动态">
+              <header className="activity-panel-header">
+                <div>
+                  <h2>操作动态</h2>
+                  <p>{hasRunningActivity ? '有任务正在执行' : '最近的数据库操作与批量任务'}</p>
+                </div>
+                <button type="button" onClick={() => setActivityPanelOpen(false)} aria-label="关闭操作动态">
+                  ×
+                </button>
+              </header>
+              <div className="activity-panel-body">
+                {visibleActivities.length === 0 ? (
+                  <div className="activity-empty">暂无操作动态。</div>
+                ) : (
+                  visibleActivities.map((activity) => (
+                    <article className="activity-card" key={activity.activityId}>
+                      <div className="activity-card-top">
+                        <div>
+                          <h3>{activity.title}</h3>
+                          <p>{activity.scope ?? '全局操作'}</p>
+                        </div>
+                        <span className={`activity-status ${activity.status.startsWith('error:') ? 'is-error' : ''}`}>
+                          {activityStatusText(activity)}
+                        </span>
+                      </div>
+                      {activity.total > 0 ? (
+                        <div className="activity-progress" aria-label={`进度 ${activity.progress} / ${activity.total}`}>
+                          <span style={{ width: `${Math.min(100, Math.round((activity.progress / activity.total) * 100))}%` }} />
+                        </div>
+                      ) : null}
+                      <div className="activity-meta">
+                        {activity.total > 0 ? <span>{activity.progress} / {activity.total}</span> : null}
+                        {activity.finishedAt ? <span>{new Date(activity.finishedAt).toLocaleTimeString('zh-CN')}</span> : null}
+                      </div>
+                      {activity.summaryText ? <p className="activity-summary">{activity.summaryText}</p> : null}
+                      {activity.events.length > 0 ? (
+                        <ol className="activity-events">
+                          {activity.events.map((event) => (
+                            <li className={`activity-event result-${event.result}`} key={event.id}>
+                              <span className="activity-event-index">{String(event.index).padStart(3, '0')}</span>
+                              <span className="activity-event-result">{resultLabel(event.result)}</span>
+                              <span className="activity-event-name">{event.subjectName}</span>
+                              <span className="activity-event-change">
+                                {event.before !== undefined || event.after !== undefined
+                                  ? `${formatNumberValue(event.before)} -> ${formatNumberValue(event.after)}`
+                                  : ''}
+                                {event.delta !== undefined && event.delta !== null ? ` ${formatDelta(event.delta)}` : ''}
+                              </span>
+                              <span className="activity-event-detail">{event.detail}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : null}
+                    </article>
+                  ))
+                )}
+              </div>
+            </aside>
+          </>
+        ) : null}
+      </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+      <div className="workspace-nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
         {(['intro', 'actresses', 'tiers', 'settings'] as const).map((key) => (
           <button
             key={key}
@@ -834,9 +1114,9 @@ export function App() {
               <button
                 type="button"
                 onClick={() => void onBatchImportStorageFolders(activeTierDetail.id)}
-                disabled={storageImporting || !storageFolders || storageFolders.length === 0}
+                disabled={Boolean(activePollingTaskId) || !storageFolders || storageFolders.length === 0}
               >
-                {storageImporting ? '导入中...' : '批量导入为演员'}
+                {activePollingTaskId ? '任务执行中...' : '批量导入为演员'}
               </button>
               {tierDetailMessage ? <span style={{ color: '#16a34a' }}>{tierDetailMessage}</span> : null}
             </div>
@@ -844,11 +1124,6 @@ export function App() {
           {storageResolved ? (
             <p style={{ marginTop: 12, marginBottom: 0 }}>
               <strong>实际路径：</strong> <code>{storageResolved}</code>
-            </p>
-          ) : null}
-          {storageImportResult ? (
-            <p style={{ marginTop: 8, color: '#374151' }}>
-              已导入 {storageImportResult.created.length} 项，跳过已有 {storageImportResult.skippedExisting.length} 项，跳过空名称 {storageImportResult.skippedEmpty} 项。
             </p>
           ) : null}
           {storageFolders && storageFolders.length > 0 ? (
@@ -940,34 +1215,45 @@ export function App() {
         </section>
       ) : null}
 
-      {(!editorView || editorView.kind === 'tier-detail') && syncTaskState ? (
-        <section style={{ marginBottom: 12, padding: 12, background: '#f9fafb', borderRadius: 8 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-            <strong>后台任务：</strong> {syncTaskState.status}{' '}
-            {syncTaskState.total > 0 ? `(${syncTaskState.progress}/${syncTaskState.total})` : null}
-            {activePollingTaskId && !isSyncTaskTerminal(syncTaskState) ? (
-              <button type="button" onClick={() => void onCancelSyncTask()}>
-                取消任务
-              </button>
-            ) : null}
-            {isSyncTaskTerminal(syncTaskState) &&
-            (syncTaskState.summary?.error ?? 0) > 0 &&
-            (syncTaskState.events?.length ?? 0) > 0 ? (
-              <button type="button" onClick={() => void onRetryFailedTierSync()}>
-                重试失败项 ({syncTaskState.summary?.error})
-              </button>
-            ) : null}
-          </div>
-          {syncTaskState.lastProcessedItem ? (
-            <div style={{ marginTop: 8, fontSize: 14 }}>
-              最近处理：{syncTaskState.lastProcessedItem.name} - {syncTaskState.lastProcessedItem.detail}
-            </div>
-          ) : null}
-          {syncTaskState.summary ? (
-            <pre style={{ marginTop: 8, fontSize: 12, overflow: 'auto', maxHeight: 160 }}>
-              {JSON.stringify(syncTaskState.summary, null, 2)}
-            </pre>
-          ) : null}
+      {activePollingTaskId && syncTaskState && !isTaskTerminal(syncTaskState) ? (
+        <section className="activity-inline-hint">
+          <span>
+            {syncTaskState.title ?? '后台任务'}正在执行
+            {syncTaskState.total > 0 ? `，${syncTaskState.progress}/${syncTaskState.total}` : ''}。可在右上角操作动态中查看明细。
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setActivityPanelOpen(true);
+              setActivityUnread(false);
+            }}
+          >
+            打开操作动态
+          </button>
+          <button type="button" onClick={() => void onCancelSyncTask()}>
+            取消任务
+          </button>
+        </section>
+      ) : null}
+
+      {syncTaskState &&
+      isTaskTerminal(syncTaskState) &&
+      (syncTaskState.summary?.error ?? 0) > 0 &&
+      (syncTaskState.events?.length ?? 0) > 0 ? (
+        <section className="activity-inline-hint">
+          <span>{syncTaskState.title ?? '后台任务'}存在失败项，可在操作动态中查看明细。</span>
+          <button
+            type="button"
+            onClick={() => {
+              setActivityPanelOpen(true);
+              setActivityUnread(false);
+            }}
+          >
+            打开操作动态
+          </button>
+          <button type="button" onClick={() => void onRetryFailedTierSync()}>
+            重试失败项 ({syncTaskState.summary?.error})
+          </button>
         </section>
       ) : null}
 

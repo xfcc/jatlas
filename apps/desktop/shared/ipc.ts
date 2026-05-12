@@ -34,6 +34,7 @@ export const IPC_CHANNELS = {
   START_SYNC_EMBY_IDS: 'desktop:start-sync-emby-ids',
   START_SYNC_MOVIE_COUNTS: 'desktop:start-sync-movie-counts',
   START_TIER_VIDEO_SYNC: 'desktop:start-tier-video-sync',
+  START_STORAGE_IMPORT: 'desktop:start-storage-import',
   GET_SYNC_TASK: 'desktop:get-sync-task',
   CANCEL_SYNC_TASK: 'desktop:cancel-sync-task',
   SCAN_STORAGE: 'desktop:scan-storage',
@@ -126,6 +127,10 @@ export type IpcInvokeMap = {
   };
   [IPC_CHANNELS.START_TIER_VIDEO_SYNC]: {
     args: [number];
+    result: { taskId: string };
+  };
+  [IPC_CHANNELS.START_STORAGE_IMPORT]: {
+    args: [number, string[]];
     result: { taskId: string };
   };
   [IPC_CHANNELS.GET_SYNC_TASK]: {

@@ -1,11 +1,20 @@
 export type TierSyncLogEvent = {
+  id?: string;
+  index?: number;
+  timestamp?: string;
   actressId: number;
+  subjectId?: number;
+  subjectName?: string;
   name: string;
+  action?: string;
   result: 'success' | 'skipped' | 'error';
+  before?: number | string | null;
+  after?: number | string | null;
   oldCount: number | null;
   newCount: number | null;
   delta: number | null;
   detail: string;
+  retryable?: boolean;
 };
 
 export type TierSyncSummary = {
@@ -20,17 +29,54 @@ export type TierSyncSummary = {
   unchangedCount: number;
 };
 
+export type StorageImportSummary = {
+  total: number;
+  created: number;
+  skippedExisting: number;
+  skippedEmpty: number;
+  skippedDuplicate: number;
+  error: number;
+};
+
+export type TaskSummary = Partial<TierSyncSummary & StorageImportSummary> & Record<string, number | undefined>;
+
+export type TaskActivityEvent = {
+  id: string;
+  index: number;
+  timestamp: string;
+  subjectName: string;
+  subjectId?: number;
+  actressId?: number;
+  name?: string;
+  action: string;
+  result: 'created' | 'updated' | 'unchanged' | 'success' | 'skipped' | 'error';
+  before?: number | string | null;
+  after?: number | string | null;
+  oldCount?: number | null;
+  newCount?: number | null;
+  delta?: number | null;
+  detail: string;
+  retryable?: boolean;
+};
+
 export type TaskState = {
+  taskId?: string;
+  kind?: 'storage-import' | 'video-count-sync' | 'emby-id-sync' | 'database-change' | 'storage-scan';
+  title?: string;
+  scope?: string;
   progress: number;
   total: number;
   status: string;
+  startedAt?: string;
+  finishedAt?: string;
+  currentItem?: string;
   lastProcessedItem?: {
     name: string;
     result: 'success' | 'skipped' | 'error';
     detail: string;
   };
-  events?: TierSyncLogEvent[];
-  summary?: TierSyncSummary;
+  events?: Array<TierSyncLogEvent | TaskActivityEvent>;
+  summary?: TaskSummary;
 };
 
 const globalTasks = globalThis as typeof globalThis & {

@@ -23,6 +23,7 @@ const IPC_CHANNELS = {
   START_SYNC_EMBY_IDS: 'desktop:start-sync-emby-ids',
   START_SYNC_MOVIE_COUNTS: 'desktop:start-sync-movie-counts',
   START_TIER_VIDEO_SYNC: 'desktop:start-tier-video-sync',
+  START_STORAGE_IMPORT: 'desktop:start-storage-import',
   GET_SYNC_TASK: 'desktop:get-sync-task',
   CANCEL_SYNC_TASK: 'desktop:cancel-sync-task',
   SCAN_STORAGE: 'desktop:scan-storage',
@@ -82,6 +83,10 @@ type DesktopApi = {
   startTierVideoSync: (
     tierId: IpcInvokeMap[typeof IPC_CHANNELS.START_TIER_VIDEO_SYNC]['args'][0],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.START_TIER_VIDEO_SYNC]['result']>;
+  startStorageImport: (
+    tierId: IpcInvokeMap[typeof IPC_CHANNELS.START_STORAGE_IMPORT]['args'][0],
+    folderNames: IpcInvokeMap[typeof IPC_CHANNELS.START_STORAGE_IMPORT]['args'][1],
+  ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.START_STORAGE_IMPORT]['result']>;
   getSyncTask: (
     taskId: IpcInvokeMap[typeof IPC_CHANNELS.GET_SYNC_TASK]['args'][0],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.GET_SYNC_TASK]['result']>;
@@ -123,6 +128,7 @@ const desktopApi: DesktopApi = {
   startSyncEmbyIds: (ids) => ipcRenderer.invoke(IPC_CHANNELS.START_SYNC_EMBY_IDS, ids),
   startSyncMovieCounts: (ids) => ipcRenderer.invoke(IPC_CHANNELS.START_SYNC_MOVIE_COUNTS, ids),
   startTierVideoSync: (tierId) => ipcRenderer.invoke(IPC_CHANNELS.START_TIER_VIDEO_SYNC, tierId),
+  startStorageImport: (tierId, folderNames) => ipcRenderer.invoke(IPC_CHANNELS.START_STORAGE_IMPORT, tierId, folderNames),
   getSyncTask: (taskId) => ipcRenderer.invoke(IPC_CHANNELS.GET_SYNC_TASK, taskId),
   cancelSyncTask: (taskId) => ipcRenderer.invoke(IPC_CHANNELS.CANCEL_SYNC_TASK, taskId),
   scanStorage: (tierId, path) => ipcRenderer.invoke(IPC_CHANNELS.SCAN_STORAGE, tierId, path),

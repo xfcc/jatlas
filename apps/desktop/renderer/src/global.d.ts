@@ -36,6 +36,7 @@ declare global {
       startSyncEmbyIds: (ids: number[]) => Promise<{ taskId: string }>;
       startSyncMovieCounts: (ids: number[]) => Promise<{ taskId: string }>;
       startTierVideoSync: (tierId: number) => Promise<{ taskId: string }>;
+      startStorageImport: (tierId: number, folderNames: string[]) => Promise<{ taskId: string }>;
       getSyncTask: (taskId: string) => Promise<TaskState | null>;
       cancelSyncTask: (taskId: string) => Promise<{ ok: true }>;
       scanStorage: (tierId: number, path: string) => Promise<{ resolvedPath: string; folders: string[] }>;

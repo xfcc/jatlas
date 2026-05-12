@@ -239,15 +239,35 @@ export function startDesktopSyncMovieCountsTask(
 
 export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCompleted?: () => void }) {
   const taskId = createDesktopTaskId();
-  desktopTasks.set(taskId, { progress: 0, total: 0, status: 'starting' });
+  const startedAt = new Date().toISOString();
+  desktopTasks.set(taskId, {
+    taskId,
+    kind: 'video-count-sync',
+    title: '批量刷新影片数量',
+    progress: 0,
+    total: 0,
+    status: 'starting',
+    startedAt,
+  });
 
   void (async () => {
     try {
     const tier = await prisma.tier.findUnique({ where: { id: tierId } });
     if (!tier) {
-      desktopTasks.set(taskId, { progress: 0, total: 0, status: 'error:tier_not_found', events: [] });
+      desktopTasks.set(taskId, {
+        taskId,
+        kind: 'video-count-sync',
+        title: '批量刷新影片数量',
+        progress: 0,
+        total: 0,
+        status: 'error:tier_not_found',
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        events: [],
+      });
       return;
     }
+    const scope = `${tier.name} 分级`;
 
     const actresses = await prisma.actress.findMany({
       where: { tierId },
@@ -260,20 +280,42 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
       last?: { name: string; result: 'success' | 'skipped' | 'error'; detail: string },
     ) => {
       desktopTasks.set(taskId, {
+        taskId,
+        kind: 'video-count-sync',
+        title: '批量刷新影片数量',
+        scope,
         progress: done,
         total: actresses.length,
         status: 'processing',
+        startedAt,
+        currentItem: last?.name,
         events: [...events],
         lastProcessedItem: last,
       });
     };
 
-    desktopTasks.set(taskId, { progress: 0, total: actresses.length, status: 'processing', events: [] });
+    desktopTasks.set(taskId, {
+      taskId,
+      kind: 'video-count-sync',
+      title: '批量刷新影片数量',
+      scope,
+      progress: 0,
+      total: actresses.length,
+      status: 'processing',
+      startedAt,
+      events: [],
+    });
     if (actresses.length === 0) {
       desktopTasks.set(taskId, {
+        taskId,
+        kind: 'video-count-sync',
+        title: '批量刷新影片数量',
+        scope,
         progress: 0,
         total: 0,
         status: 'completed',
+        startedAt,
+        finishedAt: new Date().toISOString(),
         events: [],
         summary: buildTierSummary(events),
       });
@@ -284,9 +326,15 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
     for (let i = 0; i < actresses.length; i++) {
       if (isDesktopTaskCancelRequested(taskId)) {
         desktopTasks.set(taskId, {
+          taskId,
+          kind: 'video-count-sync',
+          title: '批量刷新影片数量',
+          scope,
           progress: i,
           total: actresses.length,
           status: 'completed:cancelled',
+          startedAt,
+          finishedAt: new Date().toISOString(),
           events: [...events],
           summary: buildTierSummary(events),
         });
@@ -297,9 +345,17 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
         const actressEmbyIds = normalizeEmbyIdList(actress.emby_id);
         if (actressEmbyIds.length === 0) {
           const ev: TierSyncLogEvent = {
+            id: `${taskId}-${i + 1}`,
+            index: i + 1,
+            timestamp: new Date().toISOString(),
             actressId: actress.id,
+            subjectId: actress.id,
+            subjectName: actress.name,
             name: actress.name,
+            action: '刷新影片数量',
             result: 'skipped',
+            before: actress.video_count,
+            after: null,
             oldCount: actress.video_count,
             newCount: null,
             delta: null,
@@ -327,9 +383,17 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
         }
 
         const ev: TierSyncLogEvent = {
+          id: `${taskId}-${i + 1}`,
+          index: i + 1,
+          timestamp: new Date().toISOString(),
           actressId: actress.id,
+          subjectId: actress.id,
+          subjectName: actress.name,
           name: actress.name,
+          action: '刷新影片数量',
           result: 'success',
+          before: actress.video_count,
+          after: newCount,
           oldCount: actress.video_count,
           newCount,
           delta: videoDelta,
@@ -340,9 +404,17 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
       } catch (e) {
         const detail = e instanceof Error ? e.message : typeof e === 'string' ? e : '同步失败';
         const ev: TierSyncLogEvent = {
+          id: `${taskId}-${i + 1}`,
+          index: i + 1,
+          timestamp: new Date().toISOString(),
           actressId: actress.id,
+          subjectId: actress.id,
+          subjectName: actress.name,
           name: actress.name,
+          action: '刷新影片数量',
           result: 'error',
+          before: actress.video_count,
+          after: null,
           oldCount: actress.video_count,
           newCount: null,
           delta: null,
@@ -354,9 +426,15 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
     }
 
     desktopTasks.set(taskId, {
+      taskId,
+      kind: 'video-count-sync',
+      title: '批量刷新影片数量',
+      scope,
       progress: actresses.length,
       total: actresses.length,
       status: 'completed',
+      startedAt,
+      finishedAt: new Date().toISOString(),
       events,
       summary: buildTierSummary(events),
     });
