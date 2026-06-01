@@ -1,6 +1,6 @@
 {
   "name": "jatlas",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "main": "apps/desktop/dist-electron/electron/main.js",
   "scripts": {
@@ -84,11 +84,15 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "apps/icon.png",
-      "target": ["zip"]
+      "target": [
+        "zip"
+      ]
     },
     "win": {
       "icon": "apps/icon.png",
-      "target": ["portable"]
+      "target": [
+        "portable"
+      ]
     }
   }
 }
