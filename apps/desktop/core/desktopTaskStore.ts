@@ -31,14 +31,27 @@ export type TierSyncSummary = {
 
 export type StorageImportSummary = {
   total: number;
+  scannedFolders: number;
+  validNames: number;
   created: number;
   skippedExisting: number;
+  existingCurrent: number;
+  existingOther: number;
   skippedEmpty: number;
   skippedDuplicate: number;
   error: number;
 };
 
-export type TaskSummary = Partial<TierSyncSummary & StorageImportSummary> & Record<string, number | undefined>;
+export type EmbyIdSyncSummary = {
+  total: number;
+  existingEmbyId: number;
+  bound: number;
+  notFound: number;
+  error: number;
+};
+
+export type TaskSummary = Partial<TierSyncSummary & StorageImportSummary & EmbyIdSyncSummary> &
+  Record<string, number | undefined>;
 
 export type TaskActivityEvent = {
   id: string;

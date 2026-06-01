@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
 import type { DesktopBootstrapState } from '../../core/bootstrapService';
 import type {
   DesktopActress,
@@ -10,7 +10,31 @@ import type {
 } from '../../core/desktopDataService';
 import type { DesktopRuntimeConfig } from '../../core/configService';
 import type { TaskActivityEvent, TaskState } from '../../core/desktopTaskStore';
-import { getActivityIndicatorState } from './activityIndicatorState';
+import {
+  formatActressCreatedSummaryText,
+  formatActressDeletedSummaryText,
+  formatActressUpdatedSummaryText,
+  formatEmbyIdSyncSummaryText,
+  formatRuntimeSettingsSummaryText,
+  formatStorageImportSummaryText,
+  formatTierCreatedSummaryText,
+  formatTierDeletedSummaryText,
+  formatTierUpdatedSummaryText,
+  formatVideoCountSyncSummaryText,
+  getActressCreatedSnapshot,
+  getActressDeletedSnapshot,
+  getActressUpdateChanges,
+  getEmbyIdSyncEventGroups,
+  getRuntimeSettingsChanges,
+  getTierCreatedSnapshot,
+  getTierDeletedSnapshot,
+  getTierUpdateChanges,
+  getVideoCountSyncEventGroups,
+  type ActressLogEntry,
+  type RuntimeSettingChange,
+  type TierLogEntry,
+} from './activityLogFormatting';
+import { clampLogPaneHeight, defaultLogPaneHeight } from './splitPaneState';
 
 type WorkspaceTab = 'intro' | 'actresses' | 'tiers' | 'settings';
 type EditorView =
@@ -21,6 +45,7 @@ type EditorView =
 
 type ActivitySnapshot = {
   activityId: string;
+  kind?: TaskState['kind'];
   title: string;
   scope?: string;
   status: string;
@@ -73,6 +98,12 @@ function resultLabel(result: TaskActivityEvent['result']) {
   return '完成';
 }
 
+function eventResultText(event: TaskActivityEvent) {
+  if (event.action === '存在于其他分级') return '其他分级';
+  if (event.action === '写入失败') return '失败';
+  return resultLabel(event.result);
+}
+
 function activityStatusText(activity: ActivitySnapshot) {
   if (activity.status === 'processing') return '执行中';
   if (activity.status === 'starting') return '准备中';
@@ -116,10 +147,13 @@ function taskSummaryText(task: TaskState) {
   const summary = task.summary;
   if (!summary) return undefined;
   if (task.kind === 'storage-import') {
-    return `扫描 ${summary.total ?? task.total} 个文件夹，新增 ${summary.created ?? 0} 个演员，跳过已有 ${summary.skippedExisting ?? 0} 个，跳过空名称 ${summary.skippedEmpty ?? 0} 个，失败 ${summary.error ?? 0} 个。`;
+    return formatStorageImportSummaryText(summary, task.total);
   }
   if (task.kind === 'video-count-sync') {
-    return `刷新 ${summary.total ?? task.total} 位演员，影片数量净增 ${summary.netDelta ?? 0}；${summary.changedCount ?? 0} 位有变化，${summary.unchangedCount ?? 0} 位无变化，${summary.skipped ?? 0} 位跳过，${summary.error ?? 0} 位失败。`;
+    return formatVideoCountSyncSummaryText(summary, task.total);
+  }
+  if (task.kind === 'emby-id-sync') {
+    return formatEmbyIdSyncSummaryText(summary, task.total);
   }
   return `已处理 ${task.progress} / ${task.total}。`;
 }
@@ -127,6 +161,7 @@ function taskSummaryText(task: TaskState) {
 function taskToActivitySnapshot(task: TaskState, fallbackId: string): ActivitySnapshot {
   return {
     activityId: task.taskId ?? fallbackId,
+    kind: task.kind,
     title: task.title ?? '后台操作',
     scope: task.scope,
     status: task.status,
@@ -137,6 +172,186 @@ function taskToActivitySnapshot(task: TaskState, fallbackId: string): ActivitySn
     startedAt: task.startedAt,
     finishedAt: task.finishedAt,
   };
+}
+
+function renderActivityEvent(event: TaskActivityEvent) {
+  return (
+    <li className={`activity-event result-${event.result}`} key={event.id}>
+      <span className="activity-event-index">{String(event.index).padStart(3, '0')}</span>
+      <span className="activity-event-result">{eventResultText(event)}</span>
+      <span className="activity-event-name">{event.subjectName}</span>
+      <span className="activity-event-change">
+        {event.before !== undefined || event.after !== undefined
+          ? `${formatNumberValue(event.before)} -> ${formatNumberValue(event.after)}`
+          : ''}
+        {event.delta !== undefined && event.delta !== null ? ` ${formatDelta(event.delta)}` : ''}
+      </span>
+      <span className="activity-event-detail">{event.detail}</span>
+    </li>
+  );
+}
+
+function renderActivityEvents(events: TaskActivityEvent[]) {
+  return <ol className="activity-events">{events.map((event) => renderActivityEvent(event))}</ol>;
+}
+
+function renderCompactVideoCountEvent(event: TaskActivityEvent, displayIndex: number) {
+  const changeText =
+    event.before !== undefined || event.after !== undefined
+      ? `${formatNumberValue(event.before)} -> ${formatNumberValue(event.after)}${
+          event.delta !== undefined && event.delta !== null ? ` ${formatDelta(event.delta)}` : ''
+        }`
+      : '';
+  return (
+    <li className={`activity-event activity-event-compact result-${event.result}`} key={event.id}>
+      <span className="activity-event-index">{String(displayIndex).padStart(3, '0')}</span>
+      <span className="activity-event-name">{event.subjectName}</span>
+      {event.result === 'error' ? (
+        <span className="activity-event-detail">{event.detail}</span>
+      ) : (
+        <span className="activity-event-change">{changeText}</span>
+      )}
+    </li>
+  );
+}
+
+function renderCompactVideoCountEvents(events: TaskActivityEvent[]) {
+  return (
+    <ol className="activity-events">
+      {events.map((event, index) => renderCompactVideoCountEvent(event, index + 1))}
+    </ol>
+  );
+}
+
+function renderCompactDetailEvent(event: TaskActivityEvent, displayIndex: number) {
+  return (
+    <li className={`activity-event activity-event-compact result-${event.result}`} key={event.id}>
+      <span className="activity-event-index">{String(displayIndex).padStart(3, '0')}</span>
+      <span className="activity-event-name">{event.subjectName}</span>
+      <span className="activity-event-detail">{event.detail}</span>
+    </li>
+  );
+}
+
+function renderCompactDetailEvents(events: TaskActivityEvent[]) {
+  return (
+    <ol className="activity-events">
+      {events.map((event, index) => renderCompactDetailEvent(event, index + 1))}
+    </ol>
+  );
+}
+
+function renderActivityEventGroup(title: string, events: TaskActivityEvent[]) {
+  if (events.length === 0) return null;
+  return (
+    <section className="activity-event-group" key={title}>
+      <h4>{title}</h4>
+      {renderActivityEvents(events)}
+    </section>
+  );
+}
+
+function renderCompactActivityEventGroup(title: string, events: TaskActivityEvent[]) {
+  if (events.length === 0) return null;
+  return (
+    <section className="activity-event-group" key={title}>
+      <h4>{title}</h4>
+      {renderCompactVideoCountEvents(events)}
+    </section>
+  );
+}
+
+function renderCompactDetailActivityEventGroup(title: string, events: TaskActivityEvent[]) {
+  if (events.length === 0) return null;
+  return (
+    <section className="activity-event-group" key={title}>
+      <h4>{title}</h4>
+      {renderCompactDetailEvents(events)}
+    </section>
+  );
+}
+
+function renderStorageImportEvents(events: TaskActivityEvent[]) {
+  const created = events.filter((event) => event.result === 'created');
+  const existingOther = events.filter((event) => event.action === '存在于其他分级');
+  const failed = events.filter((event) => event.result === 'error');
+
+  return (
+    <div className="activity-event-groups">
+      {renderActivityEventGroup('新增演员', created)}
+      {renderActivityEventGroup('存在于其他分级', existingOther)}
+      {renderActivityEventGroup('写入失败', failed)}
+    </div>
+  );
+}
+
+function renderVideoCountSyncEvents(events: TaskActivityEvent[]) {
+  const groups = getVideoCountSyncEventGroups(events);
+  const hasVisibleEvents = groups.increased.length > 0 || groups.decreased.length > 0 || groups.failed.length > 0;
+  if (!hasVisibleEvents) return null;
+
+  return (
+    <div className="activity-event-groups">
+      {renderCompactActivityEventGroup('影片数量提升', groups.increased)}
+      {renderCompactActivityEventGroup('影片数量减少', groups.decreased)}
+      {renderCompactActivityEventGroup('同步失败', groups.failed)}
+    </div>
+  );
+}
+
+function renderEmbyIdSyncEvents(events: TaskActivityEvent[]) {
+  const groups = getEmbyIdSyncEventGroups(events);
+  const hasVisibleEvents = groups.bound.length > 0 || groups.notFound.length > 0 || groups.failed.length > 0;
+  if (!hasVisibleEvents) return null;
+
+  return (
+    <div className="activity-event-groups">
+      {renderCompactDetailActivityEventGroup('新增绑定', groups.bound)}
+      {renderCompactDetailActivityEventGroup('Emby 未找到', groups.notFound)}
+      {renderCompactDetailActivityEventGroup('同步失败', groups.failed)}
+    </div>
+  );
+}
+
+function renderDatabaseChangeEvents(events: TaskActivityEvent[]) {
+  const changes = events.filter((event) => event.action === '配置变更');
+  const infoChanges = events.filter((event) => event.action === '信息变更');
+  const initialInfo = events.filter((event) => event.action === '初始信息');
+  const deleteSnapshot = events.filter((event) => event.action === '删除快照');
+  const failures = events.filter((event) => event.action === '失败原因' || event.result === 'error');
+  const hasVisibleEvents =
+    changes.length > 0 ||
+    infoChanges.length > 0 ||
+    initialInfo.length > 0 ||
+    deleteSnapshot.length > 0 ||
+    failures.length > 0;
+  if (!hasVisibleEvents) return null;
+
+  return (
+    <div className="activity-event-groups">
+      {renderCompactDetailActivityEventGroup('配置变更', changes)}
+      {renderCompactDetailActivityEventGroup('信息变更', infoChanges)}
+      {renderCompactDetailActivityEventGroup('初始信息', initialInfo)}
+      {renderCompactDetailActivityEventGroup('删除快照', deleteSnapshot)}
+      {renderCompactDetailActivityEventGroup('失败原因', failures)}
+    </div>
+  );
+}
+
+function renderActivityEventList(activity: ActivitySnapshot) {
+  if (activity.kind === 'storage-import') {
+    return renderStorageImportEvents(activity.events);
+  }
+  if (activity.kind === 'video-count-sync') {
+    return renderVideoCountSyncEvents(activity.events);
+  }
+  if (activity.kind === 'emby-id-sync') {
+    return renderEmbyIdSyncEvents(activity.events);
+  }
+  if (activity.kind === 'database-change') {
+    return renderDatabaseChangeEvents(activity.events);
+  }
+  return renderActivityEvents(activity.events);
 }
 
 function createSimpleActivity(
@@ -169,6 +384,156 @@ function createSimpleActivity(
   };
 }
 
+function createRuntimeSettingsActivity(changes: RuntimeSettingChange[]): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const events: TaskActivityEvent[] = changes.map((change, index) => ({
+    id: `settings-${timestamp}-${index + 1}`,
+    index: index + 1,
+    timestamp,
+    subjectName: change.label,
+    action: '配置变更',
+    result: 'updated',
+    detail: change.detail,
+  }));
+  return {
+    activityId: `settings-${timestamp}`,
+    kind: 'database-change',
+    title: '保存设置',
+    scope: '全局操作',
+    status: 'completed',
+    progress: changes.length,
+    total: changes.length,
+    summaryText: formatRuntimeSettingsSummaryText(changes.length),
+    events,
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+function createRuntimeSettingsFailureActivity(detail: string): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const event: TaskActivityEvent = {
+    id: `settings-error-${timestamp}`,
+    index: 1,
+    timestamp,
+    subjectName: '写入配置文件失败',
+    action: '失败原因',
+    result: 'error',
+    detail,
+  };
+  return {
+    activityId: event.id,
+    kind: 'database-change',
+    title: '保存设置',
+    scope: '全局操作',
+    status: 'error:operation',
+    progress: 1,
+    total: 1,
+    summaryText: '运行配置保存失败。',
+    events: [event],
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+function createActressMaintenanceActivity(
+  title: string,
+  scope: string,
+  summaryText: string,
+  groupTitle: '信息变更' | '初始信息' | '删除快照',
+  entries: ActressLogEntry[],
+  result: TaskActivityEvent['result'],
+): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const events: TaskActivityEvent[] = entries.map((entry, index) => ({
+    id: `actress-${timestamp}-${index + 1}`,
+    index: index + 1,
+    timestamp,
+    subjectName: entry.label,
+    action: groupTitle,
+    result,
+    detail: entry.detail,
+  }));
+  return {
+    activityId: `actress-${timestamp}`,
+    kind: 'database-change',
+    title,
+    scope,
+    status: 'completed',
+    progress: entries.length,
+    total: entries.length,
+    summaryText,
+    events,
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+function createTierMaintenanceActivity(
+  title: string,
+  scope: string,
+  summaryText: string,
+  groupTitle: '信息变更' | '初始信息' | '删除快照',
+  entries: TierLogEntry[],
+  result: TaskActivityEvent['result'],
+): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const events: TaskActivityEvent[] = entries.map((entry, index) => ({
+    id: `tier-${timestamp}-${index + 1}`,
+    index: index + 1,
+    timestamp,
+    subjectName: entry.label,
+    action: groupTitle,
+    result,
+    detail: entry.detail,
+  }));
+  return {
+    activityId: `tier-${timestamp}`,
+    kind: 'database-change',
+    title,
+    scope,
+    status: 'completed',
+    progress: entries.length,
+    total: entries.length,
+    summaryText,
+    events,
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+function createTierFailureActivity(
+  title: string,
+  scope: string,
+  summaryText: string,
+  subjectName: string,
+  detail: string,
+): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const event: TaskActivityEvent = {
+    id: `tier-error-${timestamp}`,
+    index: 1,
+    timestamp,
+    subjectName,
+    action: '失败原因',
+    result: 'error',
+    detail,
+  };
+  return {
+    activityId: event.id,
+    kind: 'database-change',
+    title,
+    scope,
+    status: 'error:operation',
+    progress: 1,
+    total: 1,
+    summaryText,
+    events: [event],
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
 export function App() {
   const [bootstrap, setBootstrap] = useState<DesktopBootstrapState | null>(null);
   const [authenticated, setAuthenticated] = useState(false);
@@ -182,6 +547,7 @@ export function App() {
   const [embyApiKey, setEmbyApiKey] = useState('');
   const [storageRootPath, setStorageRootPath] = useState('');
   const [tierStoragePaths, setTierStoragePaths] = useState<Record<string, string>>({});
+  const [runtimeConfigBaseline, setRuntimeConfigBaseline] = useState<DesktopRuntimeConfig | null>(null);
   const [settingsMessage, setSettingsMessage] = useState('');
   const [tierDetailMessage, setTierDetailMessage] = useState('');
   const [tiers, setTiers] = useState<DesktopTier[]>([]);
@@ -208,11 +574,11 @@ export function App() {
   const [syncTaskState, setSyncTaskState] = useState<TaskState | null>(null);
   const pollRef = useRef<number | null>(null);
   const [activePollingTaskId, setActivePollingTaskId] = useState<string | null>(null);
-  const [activityPanelOpen, setActivityPanelOpen] = useState(false);
-  const activityPanelOpenRef = useRef(false);
-  const [activityUnread, setActivityUnread] = useState(false);
   const [activityHistory, setActivityHistory] = useState<ActivitySnapshot[]>([]);
   const archivedTaskIdsRef = useRef<Set<string>>(new Set());
+  const [logPaneHeight, setLogPaneHeight] = useState(() =>
+    defaultLogPaneHeight({ viewportHeight: typeof window === 'undefined' ? 900 : window.innerHeight }),
+  );
 
   const [storagePathInput, setStoragePathInput] = useState('');
   const [storageResolved, setStorageResolved] = useState<string | null>(null);
@@ -229,26 +595,20 @@ export function App() {
   useEffect(() => () => stopPoll(), []);
 
   useEffect(() => {
-    activityPanelOpenRef.current = activityPanelOpen;
-    if (activityPanelOpen) {
-      setActivityUnread(false);
-    }
-  }, [activityPanelOpen]);
+    const onResize = () => {
+      setLogPaneHeight((height) => clampLogPaneHeight(height, { viewportHeight: window.innerHeight }));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const nextTempId = () => {
     tempIdRef.current -= 1;
     return tempIdRef.current;
   };
 
-  const markActivityChanged = () => {
-    if (!activityPanelOpenRef.current) {
-      setActivityUnread(true);
-    }
-  };
-
   const appendActivity = (activity: ActivitySnapshot) => {
     setActivityHistory((prev) => [activity, ...prev.filter((item) => item.activityId !== activity.activityId)].slice(0, 30));
-    markActivityChanged();
   };
 
   const archiveTaskActivity = (task: TaskState, fallbackId: string) => {
@@ -293,6 +653,7 @@ export function App() {
           setEmbyApiKey(config.embyApiKey ?? '');
           setStorageRootPath(config.storageRootPath ?? '');
           setTierStoragePaths(config.tierStoragePaths ?? {});
+          setRuntimeConfigBaseline(config);
         }
       }
     })();
@@ -360,14 +721,10 @@ export function App() {
       startedAt: new Date().toISOString(),
       events: [],
     });
-    markActivityChanged();
     const tick = async () => {
       try {
         const t = await window.desktopApi.getSyncTask(taskId);
         setSyncTaskState(t);
-        if (t) {
-          markActivityChanged();
-        }
         if (!t) return;
         if (isTaskTerminal(t)) {
           stopPoll();
@@ -407,7 +764,10 @@ export function App() {
     if (ids.length === 0) return;
     setError(null);
     try {
-      const { taskId } = await window.desktopApi.startSyncMovieCounts(ids);
+      const { taskId } =
+        syncTaskState?.kind === 'emby-id-sync'
+          ? await window.desktopApi.startSyncEmbyIds(ids)
+          : await window.desktopApi.startSyncMovieCounts(ids);
       beginPollTask(taskId);
     } catch (e) {
       setError(e instanceof Error ? e.message : '重试失败');
@@ -527,7 +887,7 @@ export function App() {
     setError(null);
     try {
       const { taskId } = await window.desktopApi.startStorageImport(id, storageFolders);
-      setTierDetailMessage('导入任务已开始，可在右上角操作动态中查看进度。');
+      setTierDetailMessage('导入任务已开始，可在下方操作日志中查看进度。');
       beginPollTask(taskId);
     } catch (e) {
       setError(e instanceof Error ? e.message : '批量导入失败');
@@ -573,16 +933,19 @@ export function App() {
     setError(null);
     setSettingsMessage('');
     try {
-      const saved = await window.desktopApi.saveRuntimeConfig(runtimeConfigWithPaths(tierStoragePaths));
+      const nextConfig = runtimeConfigWithPaths(tierStoragePaths);
+      const saved = await window.desktopApi.saveRuntimeConfig(nextConfig);
       setEmbyServerUrl(saved.embyServerUrl ?? '');
       setEmbyApiKey(saved.embyApiKey ?? '');
       setStorageRootPath(saved.storageRootPath ?? '');
       setTierStoragePaths(saved.tierStoragePaths ?? {});
+      setRuntimeConfigBaseline(saved);
       setSettingsMessage('设置已保存。');
-      appendActivity(createSimpleActivity('保存设置', '数据库与 Emby 设置已保存。'));
+      appendActivity(createRuntimeSettingsActivity(getRuntimeSettingsChanges(runtimeConfigBaseline, saved)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : '保存设置失败');
-      appendActivity(createSimpleActivity('保存设置', e instanceof Error ? e.message : '保存设置失败', 'error'));
+      const detail = e instanceof Error ? e.message : '保存设置失败';
+      setError(detail);
+      appendActivity(createRuntimeSettingsFailureActivity(detail));
     } finally {
       setSaving(false);
     }
@@ -638,6 +1001,8 @@ export function App() {
     const input: DesktopTierInput = { name, video_limit, status: tierStatus || 'active' };
     const previousTiers = tiers;
     const previousActresses = actresses;
+    const editingTierId = tierEditingId;
+    const originalTier = editingTierId === null ? null : previousTiers.find((row) => row.id === editingTierId);
     const tempId = tierEditingId === null ? nextTempId() : null;
     const optimisticTier: DesktopTier = {
       id: tierEditingId ?? tempId ?? nextTempId(),
@@ -668,14 +1033,33 @@ export function App() {
             .map((row) => (row.id === optimisticTier.id ? created : row))
             .sort((a, b) => a.id - b.id),
         );
-        appendActivity(createSimpleActivity('新增分级', `已创建分级 ${created.name}。`, 'created', `${created.name} 分级`));
+        appendActivity(
+          createTierMaintenanceActivity(
+            '新增分级',
+            `${created.name} 分级`,
+            formatTierCreatedSummaryText(),
+            '初始信息',
+            getTierCreatedSnapshot(created),
+            'created',
+          ),
+        );
       } else {
         const updated = await window.desktopApi.updateTier(tierEditingId, input);
         setTiers((prev) => prev.map((row) => (row.id === tierEditingId ? updated : row)));
         setActresses((prev) =>
           prev.map((row) => (row.tierId === tierEditingId ? { ...row, tierName: updated.name } : row)),
         );
-        appendActivity(createSimpleActivity('编辑分级', `已更新分级 ${updated.name}。`, 'updated', `${updated.name} 分级`));
+        const changes = originalTier ? getTierUpdateChanges(originalTier, updated) : [];
+        appendActivity(
+          createTierMaintenanceActivity(
+            '编辑分级',
+            `${updated.name} 分级`,
+            formatTierUpdatedSummaryText(changes.length),
+            '信息变更',
+            changes,
+            'updated',
+          ),
+        );
       }
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
       resetTierForm();
@@ -683,8 +1067,17 @@ export function App() {
     } catch (e) {
       setTiers(previousTiers);
       setActresses(previousActresses);
-      setError(e instanceof Error ? e.message : '保存分级失败');
-      appendActivity(createSimpleActivity('保存分级', e instanceof Error ? e.message : '保存分级失败', 'error'));
+      const detail = e instanceof Error ? e.message : '保存分级失败';
+      setError(detail);
+      appendActivity(
+        createTierFailureActivity(
+          '保存分级',
+          `${input.name} 分级`,
+          '分级保存失败。',
+          '保存失败',
+          detail,
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -697,18 +1090,39 @@ export function App() {
     setSubmitting(true);
     setError(null);
     const previousTiers = tiers;
+    const targetTier = tiers.find((row) => row.id === id);
     try {
       setTiers((prev) => prev.filter((row) => row.id !== id));
       await window.desktopApi.deleteTier(id);
       await Promise.all([loadTiersOnly(), loadDashboardData(), tab === 'actresses' ? loadWorkspaceData(query) : Promise.resolve()]);
-      appendActivity(createSimpleActivity('删除分级', `已删除分级 #${id}。`, 'success', `分级 #${id}`));
+      appendActivity(
+        targetTier
+          ? createTierMaintenanceActivity(
+              '删除分级',
+              `${targetTier.name} 分级`,
+              formatTierDeletedSummaryText(),
+              '删除快照',
+              getTierDeletedSnapshot(targetTier),
+              'success',
+            )
+          : createSimpleActivity('删除分级', `已删除分级 #${id}。`, 'success', `分级 #${id}`),
+      );
       if (tierEditingId === id) {
         resetTierForm();
       }
     } catch (e) {
       setTiers(previousTiers);
-      setError(e instanceof Error ? e.message : '删除分级失败');
-      appendActivity(createSimpleActivity('删除分级', e instanceof Error ? e.message : '删除分级失败', 'error', `分级 #${id}`));
+      const detail = e instanceof Error ? e.message : '删除分级失败';
+      setError(detail);
+      appendActivity(
+        createTierFailureActivity(
+          '删除分级',
+          targetTier ? `${targetTier.name} 分级` : `分级 #${id}`,
+          '分级删除失败。',
+          '删除失败',
+          detail,
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -776,9 +1190,17 @@ export function App() {
           return replaced.sort((a, b) => a.id - b.id);
         });
         appendActivity(
-          createSimpleActivity('新增演员', `已创建演员 #${created.id}，归入 ${created.tierName} 分级。`, 'created', created.name),
+          createActressMaintenanceActivity(
+            '新增演员',
+            created.name,
+            formatActressCreatedSummaryText(created.tierName),
+            '初始信息',
+            getActressCreatedSnapshot(created),
+            'created',
+          ),
         );
       } else {
+        const before = previousActresses.find((row) => row.id === editingId);
         const updated = await window.desktopApi.updateActress(editingId, input);
         setActresses((prev) =>
           prev
@@ -786,7 +1208,17 @@ export function App() {
             .filter((row) => row.id !== updated.id || (matchesCurrentQuery(row.name) && matchesCurrentTierFilter(row)))
             .sort((a, b) => a.id - b.id),
         );
-        appendActivity(createSimpleActivity('编辑演员', `已更新演员 #${updated.id}。`, 'updated', updated.name));
+        const changes = before ? getActressUpdateChanges(before, updated) : getActressCreatedSnapshot(updated);
+        appendActivity(
+          createActressMaintenanceActivity(
+            '编辑演员',
+            updated.name,
+            formatActressUpdatedSummaryText(changes.length),
+            '信息变更',
+            changes,
+            'updated',
+          ),
+        );
       }
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
       resetForm();
@@ -828,7 +1260,18 @@ export function App() {
       setActresses((prev) => prev.filter((row) => row.id !== id));
       await window.desktopApi.deleteActress(id);
       await Promise.all([loadTiersOnly(), loadDashboardData()]);
-      appendActivity(createSimpleActivity('删除演员', `已删除演员 #${id}。`, 'success', target?.name ?? `演员 #${id}`));
+      appendActivity(
+        target
+          ? createActressMaintenanceActivity(
+              '删除演员',
+              target.name,
+              formatActressDeletedSummaryText(),
+              '删除快照',
+              getActressDeletedSnapshot(target),
+              'success',
+            )
+          : createSimpleActivity('删除演员', `已删除演员 #${id}。`, 'success', `演员 #${id}`),
+      );
       if (editingId === id) {
         resetForm();
       }
@@ -853,6 +1296,29 @@ export function App() {
     }
   };
 
+  const onStartLogPaneResize = (event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = logPaneHeight;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const nextHeight = startHeight + startY - moveEvent.clientY;
+      setLogPaneHeight(clampLogPaneHeight(nextHeight, { viewportHeight: window.innerHeight }));
+    };
+
+    const onMouseUp = () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.body.style.cursor = 'row-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
   const visibleActresses = actresses.filter(matchesCurrentTierFilter);
   const activeTierDetail = editorView?.kind === 'tier-detail' ? tiers.find((row) => row.id === editorView.id) ?? null : null;
   const activeTierActresses = activeTierDetail ? actresses.filter((row) => row.tierId === activeTierDetail.id) : [];
@@ -865,11 +1331,6 @@ export function App() {
   const hasFailedActivity = visibleActivities.some(
     (activity) => activity.status.startsWith('error:') || activity.events.some((event) => event.result === 'error'),
   );
-  const activityIndicator = getActivityIndicatorState({
-    hasRunningActivity,
-    hasFailedActivity,
-    hasUnreadActivity: activityUnread,
-  });
 
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
@@ -903,98 +1364,8 @@ export function App() {
   }
 
   return (
-    <main className="app-shell workspace-shell" style={{ fontFamily: 'sans-serif', padding: 24 }}>
-      <h1 style={{ marginTop: 0 }}>JATLAS 资产控制台</h1>
-      <p style={{ color: '#4b5563' }}>演员分级台账、Emby 对账与 NAS 存储扫描。</p>
-      <div className="activity-launcher">
-        <button
-          type="button"
-          className={activityIndicator.classNames.join(' ')}
-          aria-label={activityIndicator.ariaLabel}
-          title={activityIndicator.title}
-          onMouseDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setActivityPanelOpen((open) => !open);
-            setActivityUnread(false);
-          }}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M5 7h14M5 12h10M5 17h14" />
-          </svg>
-        </button>
-        {activityPanelOpen ? (
-          <>
-            <button
-              type="button"
-              className="activity-panel-backdrop"
-              aria-label="关闭操作动态"
-              onMouseDown={() => setActivityPanelOpen(false)}
-            />
-            <aside className="activity-panel" aria-label="操作动态">
-              <header className="activity-panel-header">
-                <div>
-                  <h2>操作动态</h2>
-                  <p>{hasRunningActivity ? '有任务正在执行' : '最近的数据库操作与批量任务'}</p>
-                </div>
-                <button type="button" onClick={() => setActivityPanelOpen(false)} aria-label="关闭操作动态">
-                  ×
-                </button>
-              </header>
-              <div className="activity-panel-body">
-                {visibleActivities.length === 0 ? (
-                  <div className="activity-empty">暂无操作动态。</div>
-                ) : (
-                  visibleActivities.map((activity) => (
-                    <article className="activity-card" key={activity.activityId}>
-                      <div className="activity-card-top">
-                        <div>
-                          <h3>{activity.title}</h3>
-                          <p>{activity.scope ?? '全局操作'}</p>
-                        </div>
-                        <span className={`activity-status ${activity.status.startsWith('error:') ? 'is-error' : ''}`}>
-                          {activityStatusText(activity)}
-                        </span>
-                      </div>
-                      {activity.total > 0 ? (
-                        <div className="activity-progress" aria-label={`进度 ${activity.progress} / ${activity.total}`}>
-                          <span style={{ width: `${Math.min(100, Math.round((activity.progress / activity.total) * 100))}%` }} />
-                        </div>
-                      ) : null}
-                      <div className="activity-meta">
-                        {activity.total > 0 ? <span>{activity.progress} / {activity.total}</span> : null}
-                        {activity.finishedAt ? <span>{new Date(activity.finishedAt).toLocaleTimeString('zh-CN')}</span> : null}
-                      </div>
-                      {activity.summaryText ? <p className="activity-summary">{activity.summaryText}</p> : null}
-                      {activity.events.length > 0 ? (
-                        <ol className="activity-events">
-                          {activity.events.map((event) => (
-                            <li className={`activity-event result-${event.result}`} key={event.id}>
-                              <span className="activity-event-index">{String(event.index).padStart(3, '0')}</span>
-                              <span className="activity-event-result">{resultLabel(event.result)}</span>
-                              <span className="activity-event-name">{event.subjectName}</span>
-                              <span className="activity-event-change">
-                                {event.before !== undefined || event.after !== undefined
-                                  ? `${formatNumberValue(event.before)} -> ${formatNumberValue(event.after)}`
-                                  : ''}
-                                {event.delta !== undefined && event.delta !== null ? ` ${formatDelta(event.delta)}` : ''}
-                              </span>
-                              <span className="activity-event-detail">{event.detail}</span>
-                            </li>
-                          ))}
-                        </ol>
-                      ) : null}
-                    </article>
-                  ))
-                )}
-              </div>
-            </aside>
-          </>
-        ) : null}
-      </div>
-
-      <div className="workspace-nav" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+    <main className="app-shell workspace-shell" style={{ fontFamily: 'sans-serif' }}>
+      <nav className="workspace-nav" aria-label="功能导航">
         {(['intro', 'actresses', 'tiers', 'settings'] as const).map((key) => (
           <button
             key={key}
@@ -1019,7 +1390,15 @@ export function App() {
                   : '设置'}
           </button>
         ))}
-      </div>
+      </nav>
+
+      <div className="workspace-main" style={{ '--log-pane-height': `${logPaneHeight}px` } as CSSProperties}>
+        <section className="operation-pane" aria-label="操作区">
+          <header className="workspace-header">
+            <h1>JATLAS 资产控制台</h1>
+            <p>演员分级台账、Emby 对账与 NAS 存储扫描。</p>
+          </header>
+          <div className="operation-pane-body">
 
       {editorView?.kind === 'tier' ? (
         <section style={{ marginBottom: 16, padding: 12, border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -1219,17 +1598,8 @@ export function App() {
         <section className="activity-inline-hint">
           <span>
             {syncTaskState.title ?? '后台任务'}正在执行
-            {syncTaskState.total > 0 ? `，${syncTaskState.progress}/${syncTaskState.total}` : ''}。可在右上角操作动态中查看明细。
+            {syncTaskState.total > 0 ? `，${syncTaskState.progress}/${syncTaskState.total}` : ''}。可在下方操作日志中查看明细。
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              setActivityPanelOpen(true);
-              setActivityUnread(false);
-            }}
-          >
-            打开操作动态
-          </button>
           <button type="button" onClick={() => void onCancelSyncTask()}>
             取消任务
           </button>
@@ -1241,16 +1611,7 @@ export function App() {
       (syncTaskState.summary?.error ?? 0) > 0 &&
       (syncTaskState.events?.length ?? 0) > 0 ? (
         <section className="activity-inline-hint">
-          <span>{syncTaskState.title ?? '后台任务'}存在失败项，可在操作动态中查看明细。</span>
-          <button
-            type="button"
-            onClick={() => {
-              setActivityPanelOpen(true);
-              setActivityUnread(false);
-            }}
-          >
-            打开操作动态
-          </button>
+          <span>{syncTaskState.title ?? '后台任务'}存在失败项，可在下方操作日志中查看明细。</span>
           <button type="button" onClick={() => void onRetryFailedTierSync()}>
             重试失败项 ({syncTaskState.summary?.error})
           </button>
@@ -1531,7 +1892,68 @@ export function App() {
         </section>
       ) : null}
 
-      {error ? <p style={{ color: '#dc2626' }}>{error}</p> : null}
+            {error ? <p style={{ color: '#dc2626' }}>{error}</p> : null}
+          </div>
+        </section>
+
+        <div
+          className="workspace-splitter"
+          role="separator"
+          aria-label="调整操作区和日志区高度"
+          aria-orientation="horizontal"
+          onMouseDown={onStartLogPaneResize}
+        >
+          <span />
+        </div>
+
+        <aside
+          className={`activity-log-pane ${hasRunningActivity ? 'is-running' : ''} ${hasFailedActivity ? 'has-failure' : ''}`}
+          aria-label="操作日志"
+        >
+          <header className="activity-panel-header activity-log-header">
+            <div>
+              <h2>操作日志</h2>
+              <p>
+                {hasRunningActivity
+                  ? '有任务正在执行'
+                  : hasFailedActivity
+                    ? '最近操作中存在失败项'
+                    : '最近的数据库操作与批量任务'}
+              </p>
+            </div>
+          </header>
+          <div className="activity-panel-body activity-log-body">
+            {visibleActivities.length === 0 ? (
+              <div className="activity-empty">暂无操作日志。</div>
+            ) : (
+              visibleActivities.map((activity) => (
+                <article className="activity-card" key={activity.activityId}>
+                  <div className="activity-card-top">
+                    <div>
+                      <h3>{activity.title}</h3>
+                      <p>{activity.scope ?? '全局操作'}</p>
+                    </div>
+                    <span className={`activity-status ${activity.status.startsWith('error:') ? 'is-error' : ''}`}>
+                      {activityStatusText(activity)}
+                    </span>
+                  </div>
+                  {activity.total > 0 ? (
+                    <div className="activity-progress" aria-label={`进度 ${activity.progress} / ${activity.total}`}>
+                      <span style={{ width: `${Math.min(100, Math.round((activity.progress / activity.total) * 100))}%` }} />
+                    </div>
+                  ) : null}
+                  <div className="activity-meta">
+                    {activity.total > 0 ? <span>{activity.progress} / {activity.total}</span> : null}
+                    {activity.finishedAt ? <span>{new Date(activity.finishedAt).toLocaleTimeString('zh-CN')}</span> : null}
+                  </div>
+                  {activity.summaryText ? <p className="activity-summary">{activity.summaryText}</p> : null}
+                  {activity.events.length > 0 ? renderActivityEventList(activity) : null}
+                </article>
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
     </main>
   );
 }

@@ -29,7 +29,7 @@ describe('desktop storage import task', () => {
     jest.clearAllMocks();
   });
 
-  it('emits readable activity events for created, existing, empty, and duplicate folders', async () => {
+  it('summarizes current-tier existing names and only emits important import events', async () => {
     const now = new Date();
     prismaMock.tier.findUnique.mockResolvedValue({
       id: 1,
@@ -44,12 +44,29 @@ describe('desktop storage import task', () => {
         id: 9,
         name: 'Aoi Tsukasa',
         tierId: 1,
+        tier: {
+          id: 1,
+          name: 'S',
+        },
         video_count: 12,
         emby_id: '[]',
         created_at: now,
         updated_at: now,
       },
-    ]);
+      {
+        id: 10,
+        name: 'Minami Aizawa',
+        tierId: 2,
+        tier: {
+          id: 2,
+          name: 'A',
+        },
+        video_count: 8,
+        emby_id: '[]',
+        created_at: now,
+        updated_at: now,
+      },
+    ] as never);
     (prismaMock.$transaction as jest.Mock).mockImplementation(async (callback: (client: PrismaClient) => unknown) =>
       callback(prismaMock as unknown as PrismaClient),
     );
@@ -64,18 +81,27 @@ describe('desktop storage import task', () => {
     });
     prismaMock.assetLog.create.mockResolvedValue({} as never);
 
-    const { taskId } = startDesktopStorageImportTask(1, ['Mikami Yua', 'Aoi Tsukasa', '  ', 'mikami yua']);
+    const { taskId } = startDesktopStorageImportTask(1, [
+      'Mikami Yua',
+      'Aoi Tsukasa',
+      'Minami Aizawa',
+      '  ',
+      'mikami yua',
+    ]);
     const state = await waitForTerminalTask(taskId);
 
     expect(state.kind).toBe('storage-import');
     expect(state.title).toBe('批量导入演员');
     expect(state.scope).toBe('S 分级');
-    expect(state.progress).toBe(4);
-    expect(state.total).toBe(4);
+    expect(state.progress).toBe(5);
+    expect(state.total).toBe(5);
     expect(state.summary).toMatchObject({
-      total: 4,
+      total: 5,
+      scannedFolders: 5,
+      validNames: 3,
       created: 1,
-      skippedExisting: 1,
+      existingCurrent: 1,
+      existingOther: 1,
       skippedEmpty: 1,
       skippedDuplicate: 1,
       error: 0,
@@ -84,31 +110,17 @@ describe('desktop storage import task', () => {
       expect.objectContaining({
         index: 1,
         subjectName: 'Mikami Yua',
-        action: '导入演员',
+        action: '新增演员',
         result: 'created',
         subjectId: 128,
-        detail: '创建演员 #128，归入 S 分级',
-      }),
-      expect.objectContaining({
-        index: 2,
-        subjectName: 'Aoi Tsukasa',
-        action: '导入演员',
-        result: 'skipped',
-        detail: '已存在同名演员',
+        detail: '已新增到 S 分级，演员 ID #128',
       }),
       expect.objectContaining({
         index: 3,
-        subjectName: '未命名文件夹',
-        action: '导入演员',
+        subjectName: 'Minami Aizawa',
+        action: '存在于其他分级',
         result: 'skipped',
-        detail: '文件夹名称为空',
-      }),
-      expect.objectContaining({
-        index: 4,
-        subjectName: 'mikami yua',
-        action: '导入演员',
-        result: 'skipped',
-        detail: '扫描结果重复，已跳过',
+        detail: '已存在于 A 分级',
       }),
     ]);
   });

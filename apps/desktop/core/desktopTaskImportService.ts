@@ -12,6 +12,17 @@ function normalizeComparableName(name: string) {
   return name.normalize('NFC').toLocaleLowerCase();
 }
 
+type StorageImportStats = {
+  scannedFolders: number;
+  validNames: number;
+  created: number;
+  existingCurrent: number;
+  existingOther: number;
+  skippedEmpty: number;
+  skippedDuplicate: number;
+  error: number;
+};
+
 function createImportEvent(
   taskId: string,
   index: number,
@@ -19,6 +30,7 @@ function createImportEvent(
   result: TaskActivityEvent['result'],
   detail: string,
   subjectId?: number,
+  action = '导入演员',
 ): TaskActivityEvent {
   return {
     id: `${taskId}-${index}`,
@@ -28,41 +40,25 @@ function createImportEvent(
     subjectId,
     actressId: subjectId,
     name: subjectName,
-    action: '导入演员',
+    action,
     result,
     detail,
     retryable: result === 'error',
   };
 }
 
-function buildStorageImportSummary(events: TaskActivityEvent[]): StorageImportSummary {
-  let created = 0;
-  let skippedExisting = 0;
-  let skippedEmpty = 0;
-  let skippedDuplicate = 0;
-  let error = 0;
-
-  for (const event of events) {
-    if (event.result === 'created') {
-      created++;
-    } else if (event.result === 'error') {
-      error++;
-    } else if (event.detail === '已存在同名演员') {
-      skippedExisting++;
-    } else if (event.detail === '文件夹名称为空') {
-      skippedEmpty++;
-    } else if (event.detail === '扫描结果重复，已跳过') {
-      skippedDuplicate++;
-    }
-  }
-
+function buildStorageImportSummary(stats: StorageImportStats): StorageImportSummary {
   return {
-    total: events.length,
-    created,
-    skippedExisting,
-    skippedEmpty,
-    skippedDuplicate,
-    error,
+    total: stats.scannedFolders,
+    scannedFolders: stats.scannedFolders,
+    validNames: stats.validNames,
+    created: stats.created,
+    skippedExisting: stats.existingCurrent + stats.existingOther,
+    existingCurrent: stats.existingCurrent,
+    existingOther: stats.existingOther,
+    skippedEmpty: stats.skippedEmpty,
+    skippedDuplicate: stats.skippedDuplicate,
+    error: stats.error,
   };
 }
 
@@ -108,14 +104,24 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
                   in: candidateNames,
                 },
               },
-              select: { name: true },
+              select: { name: true, tierId: true, tier: { select: { name: true } } },
             })
           : [];
-      const existingNames = new Set(existingRows.map((row) => normalizeComparableName(row.name)));
+      const existingByName = new Map(existingRows.map((row) => [normalizeComparableName(row.name), row]));
       const seenNames = new Set<string>();
       const events: TaskActivityEvent[] = [];
+      const stats: StorageImportStats = {
+        scannedFolders: folderNames.length,
+        validNames: 0,
+        created: 0,
+        existingCurrent: 0,
+        existingOther: 0,
+        skippedEmpty: 0,
+        skippedDuplicate: 0,
+        error: 0,
+      };
 
-      const flush = (done: number, last: TaskActivityEvent) => {
+      const flush = (done: number, currentItem: string, last?: TaskActivityEvent) => {
         desktopTasks.set(taskId, {
           taskId,
           kind: 'storage-import',
@@ -125,14 +131,16 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
           total: folderNames.length,
           status: 'processing',
           startedAt,
-          currentItem: last.subjectName,
-          lastProcessedItem: {
-            name: last.subjectName,
-            result: last.result === 'error' ? 'error' : last.result === 'skipped' ? 'skipped' : 'success',
-            detail: last.detail,
-          },
+          currentItem,
+          lastProcessedItem: last
+            ? {
+                name: last.subjectName,
+                result: last.result === 'error' ? 'error' : last.result === 'skipped' ? 'skipped' : 'success',
+                detail: last.detail,
+              }
+            : undefined,
           events: [...events],
-          summary: buildStorageImportSummary(events),
+          summary: buildStorageImportSummary(stats),
         });
       };
 
@@ -146,7 +154,7 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
         status: 'processing',
         startedAt,
         events: [],
-        summary: buildStorageImportSummary([]),
+        summary: buildStorageImportSummary(stats),
       });
 
       for (let i = 0; i < folderNames.length; i++) {
@@ -162,7 +170,7 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
             startedAt,
             finishedAt: new Date().toISOString(),
             events: [...events],
-            summary: buildStorageImportSummary(events),
+            summary: buildStorageImportSummary(stats),
           });
           return;
         }
@@ -171,25 +179,39 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
         const name = rawName.trim();
         const index = i + 1;
         if (!name) {
-          const event = createImportEvent(taskId, index, '未命名文件夹', 'skipped', '文件夹名称为空');
-          events.push(event);
-          flush(index, event);
+          stats.skippedEmpty++;
+          flush(index, '未命名文件夹');
           continue;
         }
 
         const normalized = normalizeComparableName(name);
         if (seenNames.has(normalized)) {
-          const event = createImportEvent(taskId, index, name, 'skipped', '扫描结果重复，已跳过');
-          events.push(event);
-          flush(index, event);
+          stats.skippedDuplicate++;
+          flush(index, name);
           continue;
         }
         seenNames.add(normalized);
+        stats.validNames++;
 
-        if (existingNames.has(normalized)) {
-          const event = createImportEvent(taskId, index, name, 'skipped', '已存在同名演员');
-          events.push(event);
-          flush(index, event);
+        const existing = existingByName.get(normalized);
+        if (existing) {
+          if (existing.tierId === tierId) {
+            stats.existingCurrent++;
+            flush(index, name);
+          } else {
+            stats.existingOther++;
+            const event = createImportEvent(
+              taskId,
+              index,
+              name,
+              'skipped',
+              `已存在于 ${existing.tier.name} 分级`,
+              undefined,
+              '存在于其他分级',
+            );
+            events.push(event);
+            flush(index, name, event);
+          }
           continue;
         }
 
@@ -213,17 +235,23 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
             });
             return row;
           });
-          existingNames.add(normalized);
+          existingByName.set(normalized, {
+            name: created.name,
+            tierId,
+            tier: { name: tier.name },
+          });
           const event = createImportEvent(
             taskId,
             index,
             name,
             'created',
-            `创建演员 #${created.id}，归入 ${tier.name} 分级`,
+            `已新增到 ${tier.name} 分级，演员 ID #${created.id}`,
             created.id,
+            '新增演员',
           );
+          stats.created++;
           events.push(event);
-          flush(index, event);
+          flush(index, name, event);
         } catch (e) {
           const event = createImportEvent(
             taskId,
@@ -231,9 +259,12 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
             name,
             'error',
             e instanceof Error ? e.message : '数据库写入失败',
+            undefined,
+            '写入失败',
           );
+          stats.error++;
           events.push(event);
-          flush(index, event);
+          flush(index, name, event);
         }
       }
 
@@ -248,7 +279,7 @@ export function startDesktopStorageImportTask(tierId: number, folderNames: strin
         startedAt,
         finishedAt: new Date().toISOString(),
         events,
-        summary: buildStorageImportSummary(events),
+        summary: buildStorageImportSummary(stats),
       });
       opts?.onCompleted?.();
     } finally {

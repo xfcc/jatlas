@@ -69,8 +69,4 @@ Skip sections that do not apply, but do not skip the decision or requirement its
 
 ## Skill
 
-For this project, use the project-local skill at:
-
-`.codex/skills/jatlas-dict-keeper/SKILL.md`
-
-Use it when work involves requirements, feature changes, implementation decisions, handoffs, or session summaries.
+Use the global Codex skill `$jatlas-dict-keeper` when work involves requirements, feature changes, implementation decisions, handoffs, or session summaries.
