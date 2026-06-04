@@ -339,6 +339,7 @@ describe('activity log formatting', () => {
         id: 8,
         name: 'A',
         video_limit: null,
+        total_video_limit: 1200,
         status: 'active',
         actressCount: 12,
       },
@@ -346,6 +347,7 @@ describe('activity log formatting', () => {
         id: 8,
         name: 'S',
         video_limit: 40,
+        total_video_limit: 480,
         status: 'retired',
         actressCount: 12,
       },
@@ -354,9 +356,10 @@ describe('activity log formatting', () => {
     expect(changes).toEqual([
       { label: '名称', detail: 'A -> S' },
       { label: '影片上限', detail: '不限 -> 40' },
+      { label: '分类总数量', detail: '1200 -> 480' },
       { label: '状态', detail: '现役 -> 引退' },
     ]);
-    expect(formatTierUpdatedSummaryText(changes.length)).toBe('分级信息已更新，变更 3 项。');
+    expect(formatTierUpdatedSummaryText(changes.length)).toBe('分级信息已更新，变更 4 项。');
   });
 
   it('formats tier creation and deletion snapshots', () => {
@@ -364,6 +367,7 @@ describe('activity log formatting', () => {
       id: 8,
       name: 'S',
       video_limit: 40,
+      total_video_limit: 400,
       status: 'active',
       actressCount: 0,
     };
@@ -373,12 +377,14 @@ describe('activity log formatting', () => {
     expect(getTierCreatedSnapshot(tier)).toEqual([
       { label: '分级 ID', detail: '#8' },
       { label: '影片上限', detail: '40' },
+      { label: '分类总数量', detail: '400' },
       { label: '状态', detail: '现役' },
       { label: '演员数', detail: '0' },
     ]);
-    expect(getTierDeletedSnapshot({ ...tier, video_limit: null, status: 'retired', actressCount: 3 })).toEqual([
+    expect(getTierDeletedSnapshot({ ...tier, video_limit: null, total_video_limit: null, status: 'retired', actressCount: 3 })).toEqual([
       { label: '分级 ID', detail: '#8' },
       { label: '影片上限', detail: '不限' },
+      { label: '分类总数量', detail: '未设置' },
       { label: '状态', detail: '引退' },
       { label: '演员数', detail: '3' },
     ]);

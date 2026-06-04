@@ -70,3 +70,17 @@ Skip sections that do not apply, but do not skip the decision or requirement its
 ## Skill
 
 Use the global Codex skill `$jatlas-dict-keeper` when work involves requirements, feature changes, implementation decisions, handoffs, or session summaries.
+
+## Project Structure and GitHub Boundary
+
+Use `docs/project-structure.md` as the current source of truth for repository layout and push boundaries.
+
+Current rule of thumb:
+
+- `apps/desktop/` is the active desktop application mainline.
+- The legacy root `src/` service layer has been removed; do not reintroduce a parallel business-logic tree.
+- `docs/` is public project documentation and may be pushed.
+- `dict/` is private local project memory and must stay untracked.
+- Build output, local SQLite databases, `.env` files, `release/`, `backups/`, `logs/`, and traces must not be staged.
+
+Before preparing a GitHub push, check `git status --short` and verify that only source, tests, public docs, package files, and schema changes are included.

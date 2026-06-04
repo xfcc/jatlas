@@ -4,10 +4,20 @@ import os from 'os';
 import path from 'path';
 import { initializeDatabaseForDesktop } from '../../apps/desktop/core/bootstrapService';
 
+const mockExecuteRawUnsafe = jest.fn();
+const mockDisconnect = jest.fn();
+
 jest.mock('child_process', () => ({
   execFile: jest.fn((_file, _args, _options, callback) => {
     callback(null, { stdout: '', stderr: '' });
   }),
+}));
+
+jest.mock('@prisma/client', () => ({
+  PrismaClient: jest.fn().mockImplementation(() => ({
+    $executeRawUnsafe: mockExecuteRawUnsafe,
+    $disconnect: mockDisconnect,
+  })),
 }));
 
 describe('initializeDatabaseForDesktop', () => {
@@ -22,16 +32,18 @@ describe('initializeDatabaseForDesktop', () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  it('skips Prisma initialization when the SQLite database already exists', async () => {
+  it('runs Prisma schema sync and total limit backfill when the SQLite database already exists', async () => {
     const dbPath = path.join(tempDir, 'jatlas.db');
     await fs.writeFile(dbPath, 'sqlite-bytes');
 
     await initializeDatabaseForDesktop({ dbMode: 'sqlite', databaseUrl: `file:${dbPath}` }, process.cwd());
 
-    expect(execFile).not.toHaveBeenCalled();
+    expect(execFile).toHaveBeenCalledTimes(1);
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('total_video_limit'));
+    expect(mockDisconnect).toHaveBeenCalledTimes(1);
   });
 
-  it('runs Prisma initialization with a timeout when the SQLite database is empty', async () => {
+  it('runs Prisma schema sync with a timeout when the SQLite database is empty', async () => {
     const dbPath = path.join(tempDir, 'jatlas.db');
     await fs.writeFile(dbPath, '');
 
@@ -47,5 +59,6 @@ describe('initializeDatabaseForDesktop', () => {
       }),
       expect.any(Function),
     );
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('COALESCE("Tier"."video_limit", 100)'));
   });
 });

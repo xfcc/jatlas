@@ -1,4 +1,4 @@
-import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '@/lib/emby';
+import { fetchActressCountFromEmby, fetchEmbyIdsByName } from '../../apps/desktop/core/embyApi';
 
 describe('Emby Fetcher', () => {
   beforeEach(() => {
@@ -22,7 +22,7 @@ describe('Emby Fetcher', () => {
     const count = await fetchActressCountFromEmby([embyPersonId]);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining(`/emby/Items?Recursive=true&IncludeItemTypes=Movie%2CVideo&PersonIds=${embyPersonId}`)
+      expect.stringContaining(`/emby/Items?Recursive=true&IncludeItemTypes=Movie%2CVideo&PersonIds=${embyPersonId}`),
     );
     expect(count).toBe(42);
   });

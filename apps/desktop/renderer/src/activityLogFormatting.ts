@@ -206,6 +206,10 @@ function formatTierLimit(limit: number | null) {
   return limit === null ? '不限' : String(limit);
 }
 
+function formatTierTotalLimit(limit: number | null) {
+  return limit === null ? '未设置' : String(limit);
+}
+
 function formatTierStatus(status: string) {
   return status === 'retired' ? '引退' : '现役';
 }
@@ -222,6 +226,12 @@ export function getTierUpdateChanges(before: DesktopTier, after: DesktopTier): T
       detail: `${formatTierLimit(before.video_limit)} -> ${formatTierLimit(after.video_limit)}`,
     });
   }
+  if (before.total_video_limit !== after.total_video_limit) {
+    changes.push({
+      label: '分类总数量',
+      detail: `${formatTierTotalLimit(before.total_video_limit)} -> ${formatTierTotalLimit(after.total_video_limit)}`,
+    });
+  }
   if (before.status !== after.status) {
     changes.push({ label: '状态', detail: `${formatTierStatus(before.status)} -> ${formatTierStatus(after.status)}` });
   }
@@ -233,6 +243,7 @@ export function getTierCreatedSnapshot(tier: DesktopTier): TierLogEntry[] {
   return [
     { label: '分级 ID', detail: `#${tier.id}` },
     { label: '影片上限', detail: formatTierLimit(tier.video_limit) },
+    { label: '分类总数量', detail: formatTierTotalLimit(tier.total_video_limit) },
     { label: '状态', detail: formatTierStatus(tier.status) },
     { label: '演员数', detail: String(tier.actressCount) },
   ];

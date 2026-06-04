@@ -1,4 +1,4 @@
-import { normalizeComparableName } from '@/lib/textNormalize';
+import { normalizeComparableName } from '../../apps/desktop/core/textNormalize';
 
 describe('normalizeComparableName', () => {
   it('unifies NFD (macOS filenames) with NFC (typical DB / IME)', () => {

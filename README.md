@@ -4,6 +4,29 @@
 
 它解决的不是“如何下载更多内容”，而是另一个更现实的问题：当收藏规模不断膨胀、硬盘空间持续被占用、Emby 条目和真实文件逐渐脱节时，如何建立一套可持续的管理机制，让个人收藏保持可控、可查、可整理。
 
+## 开发与项目结构
+
+JATLAS 当前主线是本地优先的 Electron 桌面应用：
+
+- `apps/desktop/`：桌面端主线代码，包括 Electron、React 渲染层、桌面数据服务和任务逻辑。
+- `prisma/schema.prisma`：SQLite 数据结构定义。
+- `tests/`：桌面端逻辑和通用工具函数测试。
+- `docs/`：可推送到 GitHub 的项目说明和公开资料。
+- `dict/`：本地项目记录，不推送 GitHub。
+
+更完整的目录说明、GitHub 推送边界和本地产物规则见 [项目结构与推送边界](docs/project-structure.md)。
+
+常用命令：
+
+```bash
+npm run desktop:dev
+npm test -- --runInBand
+npm run desktop:build
+npm run desktop:pack
+```
+
+`release/`、`apps/desktop/dist/`、`apps/desktop/dist-electron/`、本地数据库和 `.env` 文件都属于本机产物或私有配置，不进入 GitHub 代码提交。
+
 ## 面对的问题
 
 ### 收藏很容易变成仓鼠症

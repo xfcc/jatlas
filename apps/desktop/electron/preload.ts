@@ -4,6 +4,7 @@ import type { IpcInvokeMap } from '../shared/ipc';
 const IPC_CHANNELS = {
   HEALTH_SNAPSHOT: 'desktop:health-snapshot',
   GET_BOOTSTRAP_STATE: 'desktop:get-bootstrap-state',
+  GET_DEFAULT_DATABASE_FILE: 'desktop:get-default-database-file',
   SAVE_CONFIG_AND_INIT: 'desktop:save-config-and-init',
   GET_RUNTIME_CONFIG: 'desktop:get-runtime-config',
   SAVE_RUNTIME_CONFIG: 'desktop:save-runtime-config',
@@ -36,6 +37,7 @@ const IPC_CHANNELS = {
 type DesktopApi = {
   getHealthSnapshot: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.HEALTH_SNAPSHOT]['result']>;
   getBootstrapState: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.GET_BOOTSTRAP_STATE]['result']>;
+  getDefaultDatabaseFile: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.GET_DEFAULT_DATABASE_FILE]['result']>;
   saveConfigAndInit: (
     config: IpcInvokeMap[typeof IPC_CHANNELS.SAVE_CONFIG_AND_INIT]['args'][0],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SAVE_CONFIG_AND_INIT]['result']>;
@@ -109,6 +111,7 @@ type DesktopApi = {
 const desktopApi: DesktopApi = {
   getHealthSnapshot: () => ipcRenderer.invoke(IPC_CHANNELS.HEALTH_SNAPSHOT),
   getBootstrapState: () => ipcRenderer.invoke(IPC_CHANNELS.GET_BOOTSTRAP_STATE),
+  getDefaultDatabaseFile: () => ipcRenderer.invoke(IPC_CHANNELS.GET_DEFAULT_DATABASE_FILE),
   saveConfigAndInit: (config) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_CONFIG_AND_INIT, config),
   getRuntimeConfig: () => ipcRenderer.invoke(IPC_CHANNELS.GET_RUNTIME_CONFIG),
   saveRuntimeConfig: (config) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_RUNTIME_CONFIG, config),

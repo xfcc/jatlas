@@ -40,6 +40,14 @@ function databaseUrlFromFilePath(filePath: string) {
   return `file:${filePath.replace(/\\/g, '/')}`;
 }
 
+function getDefaultDatabaseFile(userDataPath: string) {
+  const filePath = path.join(userDataPath, 'jatlas-desktop.db');
+  return {
+    filePath,
+    databaseUrl: databaseUrlFromFilePath(filePath),
+  };
+}
+
 function ensureAuthenticated() {
   if (!isDesktopAuthenticated) {
     throw new Error('请先完成数据库选择。');
@@ -109,6 +117,8 @@ function registerIpcHandlers() {
       message: 'Desktop config loaded.',
     };
   });
+
+  ipcMain.handle(IPC_CHANNELS.GET_DEFAULT_DATABASE_FILE, async () => getDefaultDatabaseFile(app.getPath('userData')));
 
   ipcMain.handle(
     IPC_CHANNELS.SAVE_CONFIG_AND_INIT,

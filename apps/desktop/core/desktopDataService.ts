@@ -6,6 +6,7 @@ export type DesktopTier = {
   id: number;
   name: string;
   video_limit: number | null;
+  total_video_limit: number | null;
   status: string;
   actressCount: number;
 };
@@ -13,6 +14,7 @@ export type DesktopTier = {
 export type DesktopTierInput = {
   name: string;
   video_limit: number | null;
+  total_video_limit: number | null;
   status: string;
 };
 
@@ -93,6 +95,7 @@ export async function getDesktopTiers() {
       id: t.id,
       name: t.name,
       video_limit: t.video_limit,
+      total_video_limit: t.total_video_limit,
       status: t.status,
       actressCount: t._count.actresses,
     }),
@@ -108,6 +111,7 @@ export async function createDesktopTier(input: DesktopTierInput) {
     data: {
       name,
       video_limit: input.video_limit,
+      total_video_limit: input.total_video_limit,
       status: input.status || 'active',
     },
   });
@@ -115,13 +119,14 @@ export async function createDesktopTier(input: DesktopTierInput) {
     id: created.id,
     name: created.name,
     video_limit: created.video_limit,
+    total_video_limit: created.total_video_limit,
     status: created.status,
     actressCount: 0,
   } satisfies DesktopTier;
 }
 
 export async function updateDesktopTier(id: number, input: Partial<DesktopTierInput>) {
-  const data: { name?: string; video_limit?: number | null; status?: string } = {};
+  const data: { name?: string; video_limit?: number | null; total_video_limit?: number | null; status?: string } = {};
   if (input.name !== undefined) {
     const name = input.name.trim();
     if (!name) {
@@ -131,6 +136,9 @@ export async function updateDesktopTier(id: number, input: Partial<DesktopTierIn
   }
   if (input.video_limit !== undefined) {
     data.video_limit = input.video_limit;
+  }
+  if (input.total_video_limit !== undefined) {
+    data.total_video_limit = input.total_video_limit;
   }
   if (input.status !== undefined) {
     data.status = input.status;
@@ -144,6 +152,7 @@ export async function updateDesktopTier(id: number, input: Partial<DesktopTierIn
     id: updated.id,
     name: updated.name,
     video_limit: updated.video_limit,
+    total_video_limit: updated.total_video_limit,
     status: updated.status,
     actressCount: updated._count.actresses,
   } satisfies DesktopTier;

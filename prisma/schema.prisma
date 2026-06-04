@@ -15,6 +15,7 @@ model Tier {
   id          Int       @id @default(autoincrement())
   name        String    @unique
   video_limit Int?
+  total_video_limit Int?
   status      String    @default("active")
 
   actresses   Actress[]

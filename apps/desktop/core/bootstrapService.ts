@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
 import { promisify } from 'util';
@@ -35,12 +36,10 @@ async function hasExistingDatabase(databaseUrl: string): Promise<boolean> {
   }
 }
 
-export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig, cwd: string) {
-  if (await hasExistingDatabase(config.databaseUrl)) {
-    return;
-  }
-
-  const { ELECTRON_RUN_AS_NODE, NODE_OPTIONS, ...baseEnv } = process.env;
+async function runPrismaDbPush(databaseUrl: string, cwd: string) {
+  const baseEnv = { ...process.env };
+  delete baseEnv.ELECTRON_RUN_AS_NODE;
+  delete baseEnv.NODE_OPTIONS;
   const runtimeRoot = cwd.includes('app.asar') ? cwd.replace('app.asar', 'app.asar.unpacked') : cwd;
   const schemaEnginePath = path.join(
     runtimeRoot,
@@ -56,7 +55,7 @@ export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig,
 
   const env = {
     ...baseEnv,
-    DATABASE_URL: config.databaseUrl,
+    DATABASE_URL: databaseUrl,
     ELECTRON_RUN_AS_NODE: '1',
     RUST_LOG: 'info',
     PRISMA_SCHEMA_ENGINE_BINARY: schemaEnginePath,
@@ -67,4 +66,33 @@ export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig,
     timeout: PRISMA_DB_PUSH_TIMEOUT_MS,
     windowsHide: true,
   });
+}
+
+async function backfillTierTotalVideoLimits(databaseUrl: string) {
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
+  try {
+    await client.$executeRawUnsafe(`
+      UPDATE "Tier"
+      SET "total_video_limit" = (
+        SELECT COUNT(*)
+        FROM "Actress"
+        WHERE "Actress"."tierId" = "Tier"."id"
+      ) * COALESCE("Tier"."video_limit", 100)
+      WHERE "total_video_limit" IS NULL
+    `);
+  } finally {
+    await client.$disconnect();
+  }
+}
+
+export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig, cwd: string) {
+  await hasExistingDatabase(config.databaseUrl);
+  await runPrismaDbPush(config.databaseUrl, cwd);
+  await backfillTierTotalVideoLimits(config.databaseUrl);
 }

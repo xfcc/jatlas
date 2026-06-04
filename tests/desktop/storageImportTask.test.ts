@@ -35,6 +35,7 @@ describe('desktop storage import task', () => {
       id: 1,
       name: 'S',
       video_limit: null,
+      total_video_limit: null,
       status: 'active',
       created_at: now,
       updated_at: now,

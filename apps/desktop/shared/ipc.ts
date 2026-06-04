@@ -15,6 +15,7 @@ import type { TaskState } from '../core/desktopTaskStore';
 export const IPC_CHANNELS = {
   HEALTH_SNAPSHOT: 'desktop:health-snapshot',
   GET_BOOTSTRAP_STATE: 'desktop:get-bootstrap-state',
+  GET_DEFAULT_DATABASE_FILE: 'desktop:get-default-database-file',
   SAVE_CONFIG_AND_INIT: 'desktop:save-config-and-init',
   GET_RUNTIME_CONFIG: 'desktop:get-runtime-config',
   SAVE_RUNTIME_CONFIG: 'desktop:save-runtime-config',
@@ -52,6 +53,10 @@ export type IpcInvokeMap = {
   [IPC_CHANNELS.GET_BOOTSTRAP_STATE]: {
     args: [];
     result: DesktopBootstrapState;
+  };
+  [IPC_CHANNELS.GET_DEFAULT_DATABASE_FILE]: {
+    args: [];
+    result: { filePath: string; databaseUrl: string };
   };
   [IPC_CHANNELS.SAVE_CONFIG_AND_INIT]: {
     args: [DesktopRuntimeConfig];

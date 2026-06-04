@@ -17,6 +17,7 @@ declare global {
     desktopApi: {
       getHealthSnapshot: () => Promise<DesktopHealthSnapshot>;
       getBootstrapState: () => Promise<DesktopBootstrapState>;
+      getDefaultDatabaseFile: () => Promise<{ filePath: string; databaseUrl: string }>;
       saveConfigAndInit: (config: DesktopRuntimeConfig) => Promise<DesktopBootstrapState>;
       getRuntimeConfig: () => Promise<DesktopRuntimeConfig | null>;
       saveRuntimeConfig: (config: DesktopRuntimeConfig) => Promise<DesktopRuntimeConfig>;
