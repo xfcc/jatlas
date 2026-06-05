@@ -10,6 +10,7 @@ import type {
   DesktopTier,
   DesktopTierInput,
 } from '../core/desktopDataService';
+import type { MinnanoActressProfile } from '../core/minnanoProfileService';
 import type { TaskState } from '../core/desktopTaskStore';
 
 export const IPC_CHANNELS = {
@@ -27,6 +28,7 @@ export const IPC_CHANNELS = {
   CREATE_ACTRESS: 'desktop:create-actress',
   UPDATE_ACTRESS: 'desktop:update-actress',
   DELETE_ACTRESS: 'desktop:delete-actress',
+  FETCH_MINNANO_PROFILE: 'desktop:fetch-minnano-profile',
   CREATE_TIER: 'desktop:create-tier',
   UPDATE_TIER: 'desktop:update-tier',
   DELETE_TIER: 'desktop:delete-tier',
@@ -101,6 +103,10 @@ export type IpcInvokeMap = {
   [IPC_CHANNELS.DELETE_ACTRESS]: {
     args: [number];
     result: { success: true };
+  };
+  [IPC_CHANNELS.FETCH_MINNANO_PROFILE]: {
+    args: [string];
+    result: MinnanoActressProfile;
   };
   [IPC_CHANNELS.CREATE_TIER]: {
     args: [DesktopTierInput];

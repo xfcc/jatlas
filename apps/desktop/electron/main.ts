@@ -28,6 +28,7 @@ import {
 import { startDesktopStorageImportTask } from '../core/desktopTaskImportService';
 import { getDesktopTaskState, requestCancelDesktopTask } from '../core/desktopTaskStore';
 import { resetDesktopPrismaClient } from '../core/prismaClient';
+import { fetchMinnanoActressProfile } from '../core/minnanoProfileService';
 import {
   startDesktopSyncEmbyIdsTask,
   startDesktopSyncMovieCountsTask,
@@ -199,6 +200,11 @@ function registerIpcHandlers() {
     ensureAuthenticated();
     await deleteDesktopActress(id);
     return { success: true as const };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.FETCH_MINNANO_PROFILE, async (_event, name: string) => {
+    ensureAuthenticated();
+    return fetchMinnanoActressProfile(name);
   });
 
   ipcMain.handle(IPC_CHANNELS.CREATE_TIER, async (_event, input) => {

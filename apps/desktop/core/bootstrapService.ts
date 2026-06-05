@@ -36,6 +36,25 @@ async function hasExistingDatabase(databaseUrl: string): Promise<boolean> {
   }
 }
 
+async function hasActressColumn(databaseUrl: string, columnName: string): Promise<boolean> {
+  if (!(await hasExistingDatabase(databaseUrl))) return false;
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
+  try {
+    const rows = await client.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("Actress")`);
+    return rows.some((row) => row.name === columnName);
+  } catch {
+    return false;
+  } finally {
+    await client.$disconnect();
+  }
+}
+
 async function runPrismaDbPush(databaseUrl: string, cwd: string) {
   const baseEnv = { ...process.env };
   delete baseEnv.ELECTRON_RUN_AS_NODE;
@@ -91,8 +110,103 @@ async function backfillTierTotalVideoLimits(databaseUrl: string) {
   }
 }
 
+async function backfillActressStatuses(databaseUrl: string) {
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
+  try {
+    await client.$executeRawUnsafe(`
+      UPDATE "Actress"
+      SET "status" = 'active'
+      WHERE "status" IS NULL OR TRIM("status") = ''
+    `);
+  } finally {
+    await client.$disconnect();
+  }
+}
+
+async function backfillActressProfileFields(databaseUrl: string) {
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
+  try {
+    await client.$executeRawUnsafe(`
+      UPDATE "Actress"
+      SET
+        "birthday" = CASE WHEN TRIM("birthday") = '' THEN "birth_date" ELSE "birthday" END,
+        "cup" = CASE WHEN TRIM("cup") = '' THEN "cup_size" ELSE "cup" END,
+        "bust" = CASE
+          WHEN TRIM("bust") = '' AND INSTR("measurements", '/') > 0
+          THEN SUBSTR("measurements", 1, INSTR("measurements", '/') - 1)
+          ELSE "bust"
+        END,
+        "waist" = CASE
+          WHEN TRIM("waist") = '' AND INSTR(SUBSTR("measurements", INSTR("measurements", '/') + 1), '/') > 0
+          THEN SUBSTR(
+            SUBSTR("measurements", INSTR("measurements", '/') + 1),
+            1,
+            INSTR(SUBSTR("measurements", INSTR("measurements", '/') + 1), '/') - 1
+          )
+          ELSE "waist"
+        END,
+        "hip" = CASE
+          WHEN TRIM("hip") = '' AND INSTR(SUBSTR("measurements", INSTR("measurements", '/') + 1), '/') > 0
+          THEN SUBSTR(
+            SUBSTR("measurements", INSTR("measurements", '/') + 1),
+            INSTR(SUBSTR("measurements", INSTR("measurements", '/') + 1), '/') + 1
+          )
+          ELSE "hip"
+        END,
+        "career_from" = CASE
+          WHEN TRIM("career_from") = '' AND INSTR("career_period", '~') > 0
+          THEN SUBSTR("career_period", 1, INSTR("career_period", '~') - 1)
+          ELSE "career_from"
+        END,
+        "career_to" = CASE
+          WHEN TRIM("career_to") = '' AND INSTR("career_period", '~') > 0
+          THEN SUBSTR("career_period", INSTR("career_period", '~') + 1)
+          ELSE "career_to"
+        END
+    `);
+  } finally {
+    await client.$disconnect();
+  }
+}
+
+async function backfillActressAssetUpdatedAt(databaseUrl: string) {
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
+  });
+  try {
+    await client.$executeRawUnsafe(`
+      UPDATE "Actress"
+      SET "asset_updated_at" = "updated_at"
+    `);
+  } finally {
+    await client.$disconnect();
+  }
+}
+
 export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig, cwd: string) {
   await hasExistingDatabase(config.databaseUrl);
+  const hadAssetUpdatedAt = await hasActressColumn(config.databaseUrl, 'asset_updated_at');
   await runPrismaDbPush(config.databaseUrl, cwd);
   await backfillTierTotalVideoLimits(config.databaseUrl);
+  await backfillActressStatuses(config.databaseUrl);
+  await backfillActressProfileFields(config.databaseUrl);
+  if (!hadAssetUpdatedAt) {
+    await backfillActressAssetUpdatedAt(config.databaseUrl);
+  }
 }

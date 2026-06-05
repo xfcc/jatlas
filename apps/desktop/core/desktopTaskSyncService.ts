@@ -236,7 +236,7 @@ export function startDesktopSyncMovieCountsTask(
         if (videoDelta !== 0) {
           await prisma.actress.update({
             where: { id: actressId },
-            data: { video_count: newCount },
+            data: { video_count: newCount, asset_updated_at: new Date() },
           });
           await prisma.assetLog.create({
             data: {
@@ -418,7 +418,10 @@ export function startDesktopTierVideoCountSyncTask(tierId: number, opts?: { onCo
         const videoDelta = newCount - actress.video_count;
 
         if (videoDelta !== 0) {
-          await prisma.actress.update({ where: { id: actress.id }, data: { video_count: newCount } });
+          await prisma.actress.update({
+            where: { id: actress.id },
+            data: { video_count: newCount, asset_updated_at: new Date() },
+          });
           await prisma.assetLog.create({
             data: {
               actress_id: actress.id,

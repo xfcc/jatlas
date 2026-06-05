@@ -69,7 +69,7 @@ Skip sections that do not apply, but do not skip the decision or requirement its
 
 ## Skill
 
-Use the global Codex skill `$jatlas-dict-keeper` when work involves requirements, feature changes, implementation decisions, handoffs, or session summaries.
+Use the project-local Codex skill `$jatlas-dict-keeper` when work involves requirements, feature changes, implementation decisions, handoffs, or session summaries.
 
 ## Project Structure and GitHub Boundary
 

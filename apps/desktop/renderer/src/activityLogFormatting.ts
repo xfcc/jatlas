@@ -132,6 +132,14 @@ function formatEmbyIdCount(ids: string[]) {
   return `${ids.length} 个`;
 }
 
+function formatStringListValue(values: string[]) {
+  return values.length > 0 ? values.join(', ') : '未设置';
+}
+
+function formatTextValue(value: string) {
+  return value.trim() || '未设置';
+}
+
 function normalizeEmbyIds(ids: string[]) {
   return [...ids].map((id) => id.trim()).filter(Boolean).sort();
 }
@@ -145,6 +153,10 @@ function sameStringList(left: string[], right: string[]) {
   );
 }
 
+function formatActressStatus(status: string) {
+  return status === 'retired' ? '引退' : '现役';
+}
+
 export function getActressUpdateChanges(before: DesktopActress, after: DesktopActress): ActressLogEntry[] {
   const changes: ActressLogEntry[] = [];
 
@@ -153,6 +165,9 @@ export function getActressUpdateChanges(before: DesktopActress, after: DesktopAc
   }
   if (before.tierId !== after.tierId || before.tierName !== after.tierName) {
     changes.push({ label: '分级', detail: `${before.tierName} -> ${after.tierName}` });
+  }
+  if (before.status !== after.status) {
+    changes.push({ label: '演员状态', detail: `${formatActressStatus(before.status)} -> ${formatActressStatus(after.status)}` });
   }
   if (before.video_count !== after.video_count) {
     const delta = after.video_count - before.video_count;
@@ -172,6 +187,36 @@ export function getActressUpdateChanges(before: DesktopActress, after: DesktopAc
           : `${beforeCount} -> ${afterCount}`,
     });
   }
+  if (before.roman !== after.roman) {
+    changes.push({ label: '英文名', detail: `${formatTextValue(before.roman)} -> ${formatTextValue(after.roman)}` });
+  }
+  if (!sameStringList(before.aliases, after.aliases)) {
+    changes.push({ label: '别名 / aliases', detail: `${formatStringListValue(before.aliases)} -> ${formatStringListValue(after.aliases)}` });
+  }
+  if (before.birthday !== after.birthday) {
+    changes.push({ label: '出生日期', detail: `${formatTextValue(before.birthday)} -> ${formatTextValue(after.birthday)}` });
+  }
+  if (before.cup !== after.cup) {
+    changes.push({ label: '罩杯', detail: `${formatTextValue(before.cup)} -> ${formatTextValue(after.cup)}` });
+  }
+  if (before.bust !== after.bust) {
+    changes.push({ label: '胸围 / bust', detail: `${formatTextValue(before.bust)} -> ${formatTextValue(after.bust)}` });
+  }
+  if (before.waist !== after.waist) {
+    changes.push({ label: '腰围 / waist', detail: `${formatTextValue(before.waist)} -> ${formatTextValue(after.waist)}` });
+  }
+  if (before.hip !== after.hip) {
+    changes.push({ label: '臀围 / hip', detail: `${formatTextValue(before.hip)} -> ${formatTextValue(after.hip)}` });
+  }
+  if (before.career_from !== after.career_from) {
+    changes.push({ label: '出演开始', detail: `${formatTextValue(before.career_from)} -> ${formatTextValue(after.career_from)}` });
+  }
+  if (before.career_to !== after.career_to) {
+    changes.push({ label: '出演结束', detail: `${formatTextValue(before.career_to)} -> ${formatTextValue(after.career_to)}` });
+  }
+  if (!sameStringList(before.tags, after.tags)) {
+    changes.push({ label: '标签', detail: `${formatStringListValue(before.tags)} -> ${formatStringListValue(after.tags)}` });
+  }
 
   return changes;
 }
@@ -180,8 +225,19 @@ export function getActressCreatedSnapshot(row: DesktopActress): ActressLogEntry[
   return [
     { label: '演员 ID', detail: `#${row.id}` },
     { label: '分级', detail: row.tierName },
+    { label: '演员状态', detail: formatActressStatus(row.status) },
     { label: '影片数量', detail: String(row.video_count) },
     { label: 'Emby ID', detail: formatEmbyIdCount(row.embyIds) },
+    { label: '英文名', detail: formatTextValue(row.roman) },
+    { label: '别名 / aliases', detail: formatStringListValue(row.aliases) },
+    { label: '出生日期', detail: formatTextValue(row.birthday) },
+    { label: '罩杯', detail: formatTextValue(row.cup) },
+    { label: '胸围 / bust', detail: formatTextValue(row.bust) },
+    { label: '腰围 / waist', detail: formatTextValue(row.waist) },
+    { label: '臀围 / hip', detail: formatTextValue(row.hip) },
+    { label: '出演开始', detail: formatTextValue(row.career_from) },
+    { label: '出演结束', detail: formatTextValue(row.career_to) },
+    { label: '标签', detail: formatStringListValue(row.tags) },
   ];
 }
 

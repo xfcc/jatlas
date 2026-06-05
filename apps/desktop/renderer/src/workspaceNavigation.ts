@@ -11,7 +11,6 @@ export const workspaceTabs: Array<{ key: WorkspaceTab; label: string; englishLab
 export type AssetCategoryCard = {
   id: number;
   name: string;
-  statusText: string;
   actressCount: number;
   totalVideoCount: number;
   overloadedVideoCount: number;
@@ -23,10 +22,6 @@ type BuildAssetCategoryCardsInput = {
   tiers: DesktopTier[];
   distribution: DesktopDashboardStats['m3'];
 };
-
-function categoryStatusText(status: string) {
-  return status === 'retired' ? '引退' : '现役';
-}
 
 export function buildAssetCategoryCards({
   tiers,
@@ -46,7 +41,6 @@ export function buildAssetCategoryCards({
     return {
       id: tier.id,
       name: tier.name,
-      statusText: categoryStatusText(tier.status),
       actressCount,
       totalVideoCount,
       overloadedVideoCount,

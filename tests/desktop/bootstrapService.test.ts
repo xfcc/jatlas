@@ -5,6 +5,7 @@ import path from 'path';
 import { initializeDatabaseForDesktop } from '../../apps/desktop/core/bootstrapService';
 
 const mockExecuteRawUnsafe = jest.fn();
+const mockQueryRawUnsafe = jest.fn();
 const mockDisconnect = jest.fn();
 
 jest.mock('child_process', () => ({
@@ -16,6 +17,7 @@ jest.mock('child_process', () => ({
 jest.mock('@prisma/client', () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     $executeRawUnsafe: mockExecuteRawUnsafe,
+    $queryRawUnsafe: mockQueryRawUnsafe,
     $disconnect: mockDisconnect,
   })),
 }));
@@ -26,6 +28,7 @@ describe('initializeDatabaseForDesktop', () => {
   beforeEach(async () => {
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'jatlas-desktop-bootstrap-'));
     jest.clearAllMocks();
+    mockQueryRawUnsafe.mockResolvedValue([]);
   });
 
   afterEach(async () => {
@@ -40,7 +43,10 @@ describe('initializeDatabaseForDesktop', () => {
 
     expect(execFile).toHaveBeenCalledTimes(1);
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('total_video_limit'));
-    expect(mockDisconnect).toHaveBeenCalledTimes(1);
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"status" = \'active\''));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"career_from"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"asset_updated_at" = "updated_at"'));
+    expect(mockDisconnect).toHaveBeenCalledTimes(5);
   });
 
   it('runs Prisma schema sync with a timeout when the SQLite database is empty', async () => {
@@ -60,5 +66,8 @@ describe('initializeDatabaseForDesktop', () => {
       expect.any(Function),
     );
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('COALESCE("Tier"."video_limit", 100)'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"Actress"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"birthday"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"asset_updated_at" = "updated_at"'));
   });
 });

@@ -25,7 +25,6 @@ describe('workspace navigation', () => {
       {
         id: 1,
         name: 'S',
-        statusText: '现役',
         actressCount: 2,
         totalVideoCount: 120,
         overloadedVideoCount: 0,
@@ -35,7 +34,6 @@ describe('workspace navigation', () => {
       {
         id: 2,
         name: 'A',
-        statusText: '引退',
         actressCount: 1,
         totalVideoCount: 22,
         overloadedVideoCount: 0,
