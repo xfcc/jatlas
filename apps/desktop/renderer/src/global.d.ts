@@ -30,7 +30,7 @@ declare global {
       createActress: (input: DesktopActressInput) => Promise<DesktopActress>;
       updateActress: (id: number, input: DesktopActressInput) => Promise<DesktopActress>;
       deleteActress: (id: number) => Promise<{ success: true }>;
-      fetchMinnanoProfile: (name: string) => Promise<MinnanoActressProfile>;
+      fetchMinnanoProfile: (name: string, sourceUrl?: string) => Promise<MinnanoActressProfile>;
       createTier: (input: DesktopTierInput) => Promise<DesktopTier>;
       updateTier: (id: number, input: Partial<DesktopTierInput>) => Promise<DesktopTier>;
       deleteTier: (id: number) => Promise<{ success: true }>;

@@ -105,7 +105,7 @@ export type IpcInvokeMap = {
     result: { success: true };
   };
   [IPC_CHANNELS.FETCH_MINNANO_PROFILE]: {
-    args: [string];
+    args: [string, string?];
     result: MinnanoActressProfile;
   };
   [IPC_CHANNELS.CREATE_TIER]: {

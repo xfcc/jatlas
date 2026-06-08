@@ -1,4 +1,4 @@
-import { parseMinnanoActressProfileHtml } from '../../apps/desktop/core/minnanoProfileService';
+import { fetchMinnanoActressProfile, parseMinnanoActressProfileHtml } from '../../apps/desktop/core/minnanoProfileService';
 
 describe('minnano profile service', () => {
   it('parses actress profile fields from Minnano html', () => {
@@ -79,5 +79,36 @@ describe('minnano profile service', () => {
     `;
 
     expect(parseMinnanoActressProfileHtml(html, 'https://example.test').aliases).toEqual([]);
+  });
+
+  it('fetches directly from a configured Minnano profile URL before searching by name', async () => {
+    const html = `
+      <html>
+        <head><link rel="canonical" href="https://www.minnano-av.com/actress832690.html"></head>
+        <body>
+          <h1>奥田咲<span>おくださき / Okuda Saki</span></h1>
+          <div class="act-profile"><table><tr><td><span>タグ</span><div class="tagarea"><a>美人</a></div></td></tr></table></div>
+        </body>
+      </html>
+    `;
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      url: 'https://www.minnano-av.com/actress832690.html',
+      text: async () => html,
+    } as Response);
+
+    const profile = await fetchMinnanoActressProfile('错误候选', 'http://minnano-av.com/actress832690.html?from=test');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://www.minnano-av.com/actress832690.html?from=test');
+    expect(profile.matchedName).toBe('奥田咲');
+    expect(profile.sourceUrl).toBe('https://www.minnano-av.com/actress832690.html');
+    fetchMock.mockRestore();
+  });
+
+  it('rejects non-profile Minnano source URLs', async () => {
+    await expect(fetchMinnanoActressProfile('奥田咲', 'https://www.minnano-av.com/search_result.php')).rejects.toThrow(
+      'Minnano 页面地址必须是女优详情页',
+    );
   });
 });

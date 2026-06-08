@@ -248,6 +248,23 @@ describe('activity log formatting', () => {
     expect(formatRuntimeSettingsSummaryText(0)).toBe('运行配置已保存，无配置项变化。');
   });
 
+  it('summarizes terminal theme mode changes as visual mode updates', () => {
+    const changes = getRuntimeSettingsChanges(
+      {
+        dbMode: 'sqlite',
+        databaseUrl: 'file:/jatlas.db',
+        themeMode: 'dark',
+      },
+      {
+        dbMode: 'sqlite',
+        databaseUrl: 'file:/jatlas.db',
+        themeMode: 'light',
+      },
+    );
+
+    expect(changes).toEqual([{ label: '视觉模式', detail: '已更新' }]);
+  });
+
   it('summarizes actress update changes around business fields only', () => {
     const changes = getActressUpdateChanges(
       {
@@ -267,6 +284,7 @@ describe('activity log formatting', () => {
         hip: '',
         career_from: '',
         career_to: '',
+        minnano_url: '',
         tags: [],
         updated_at: '2026-06-01T00:00:00.000Z',
       },
@@ -287,6 +305,7 @@ describe('activity log formatting', () => {
         hip: '85',
         career_from: '2012',
         career_to: '',
+        minnano_url: 'https://www.minnano-av.com/actress832690.html',
         tags: ['微乳', '低身長'],
         updated_at: '2026-06-01T00:01:00.000Z',
       },
@@ -306,9 +325,10 @@ describe('activity log formatting', () => {
       { label: '腰围 / waist', detail: '未设置 -> 54' },
       { label: '臀围 / hip', detail: '未设置 -> 85' },
       { label: '出演开始', detail: '未设置 -> 2012' },
+      { label: 'Minnano 来源地址', detail: '未设置 -> https://www.minnano-av.com/actress832690.html' },
       { label: '标签', detail: '未设置 -> 微乳, 低身長' },
     ]);
-    expect(formatActressUpdatedSummaryText(changes.length)).toBe('演员信息已更新，变更 14 项。');
+    expect(formatActressUpdatedSummaryText(changes.length)).toBe('演员信息已更新，变更 15 项。');
     expect(JSON.stringify(changes)).not.toContain('12345');
   });
 
@@ -332,6 +352,7 @@ describe('activity log formatting', () => {
           hip: '',
           career_from: '',
           career_to: '',
+          minnano_url: '',
           tags: [],
           updated_at: '2026-06-01T00:00:00.000Z',
         },
@@ -352,6 +373,7 @@ describe('activity log formatting', () => {
           hip: '',
           career_from: '',
           career_to: '',
+          minnano_url: '',
           tags: [],
           updated_at: '2026-06-01T00:01:00.000Z',
         },
@@ -377,6 +399,7 @@ describe('activity log formatting', () => {
       hip: '85',
       career_from: '2012',
       career_to: '',
+      minnano_url: 'https://www.minnano-av.com/actress832690.html',
       tags: ['微乳', '低身長'],
       updated_at: '2026-06-01T00:00:00.000Z',
     };
@@ -398,6 +421,7 @@ describe('activity log formatting', () => {
       { label: '臀围 / hip', detail: '85' },
       { label: '出演开始', detail: '2012' },
       { label: '出演结束', detail: '未设置' },
+      { label: 'Minnano 来源地址', detail: 'https://www.minnano-av.com/actress832690.html' },
       { label: '标签', detail: '微乳, 低身長' },
     ]);
     expect(getActressDeletedSnapshot(row)).toEqual([
@@ -415,6 +439,7 @@ describe('activity log formatting', () => {
       { label: '臀围 / hip', detail: '85' },
       { label: '出演开始', detail: '2012' },
       { label: '出演结束', detail: '未设置' },
+      { label: 'Minnano 来源地址', detail: 'https://www.minnano-av.com/actress832690.html' },
       { label: '标签', detail: '微乳, 低身長' },
     ]);
     expect(JSON.stringify(getActressCreatedSnapshot(row))).not.toContain('12345');

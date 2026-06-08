@@ -109,6 +109,11 @@ export function getRuntimeSettingsChanges(
       after: normalizeOptionalValue(after.storageRootPath),
     },
     {
+      label: '视觉模式',
+      before: normalizeOptionalValue(previous.themeMode),
+      after: normalizeOptionalValue(after.themeMode),
+    },
+    {
       label: '分级存储地址',
       before: normalizeTierStoragePaths(previous.tierStoragePaths),
       after: normalizeTierStoragePaths(after.tierStoragePaths),
@@ -214,6 +219,9 @@ export function getActressUpdateChanges(before: DesktopActress, after: DesktopAc
   if (before.career_to !== after.career_to) {
     changes.push({ label: '出演结束', detail: `${formatTextValue(before.career_to)} -> ${formatTextValue(after.career_to)}` });
   }
+  if (before.minnano_url !== after.minnano_url) {
+    changes.push({ label: 'Minnano 来源地址', detail: `${formatTextValue(before.minnano_url)} -> ${formatTextValue(after.minnano_url)}` });
+  }
   if (!sameStringList(before.tags, after.tags)) {
     changes.push({ label: '标签', detail: `${formatStringListValue(before.tags)} -> ${formatStringListValue(after.tags)}` });
   }
@@ -237,6 +245,7 @@ export function getActressCreatedSnapshot(row: DesktopActress): ActressLogEntry[
     { label: '臀围 / hip', detail: formatTextValue(row.hip) },
     { label: '出演开始', detail: formatTextValue(row.career_from) },
     { label: '出演结束', detail: formatTextValue(row.career_to) },
+    { label: 'Minnano 来源地址', detail: formatTextValue(row.minnano_url) },
     { label: '标签', detail: formatStringListValue(row.tags) },
   ];
 }

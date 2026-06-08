@@ -39,6 +39,7 @@ function actressRow(videoCount: number, assetUpdatedAt: Date) {
     hip: '',
     career_from: '',
     career_to: '',
+    minnano_url: '',
     measurements: '',
     birth_date: '',
     career_period: '',
@@ -59,6 +60,7 @@ function input(videoCount: number): DesktopActressInput {
     status: 'active',
     embyIds: [],
     aliases: [],
+    minnano_url: '',
     tags: [],
   };
 }

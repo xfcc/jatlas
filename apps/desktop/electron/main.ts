@@ -109,14 +109,26 @@ function registerIpcHandlers() {
     }
 
     applyDesktopRuntimeEnv(config);
-    await resetDesktopPrismaClient();
-    isDesktopAuthenticated = true;
-    return {
-      configured: true,
-      initialized: true,
-      configPath,
-      message: 'Desktop config loaded.',
-    };
+    try {
+      const workspaceRoot = path.resolve(__dirname, '../../../..');
+      await initializeDatabaseForDesktop(config, workspaceRoot);
+      await resetDesktopPrismaClient();
+      isDesktopAuthenticated = true;
+      return {
+        configured: true,
+        initialized: true,
+        configPath,
+        message: 'Desktop config loaded.',
+      };
+    } catch (e) {
+      isDesktopAuthenticated = false;
+      return {
+        configured: true,
+        initialized: false,
+        configPath,
+        message: e instanceof Error ? e.message : '数据库初始化失败。',
+      };
+    }
   });
 
   ipcMain.handle(IPC_CHANNELS.GET_DEFAULT_DATABASE_FILE, async () => getDefaultDatabaseFile(app.getPath('userData')));
@@ -202,9 +214,9 @@ function registerIpcHandlers() {
     return { success: true as const };
   });
 
-  ipcMain.handle(IPC_CHANNELS.FETCH_MINNANO_PROFILE, async (_event, name: string) => {
+  ipcMain.handle(IPC_CHANNELS.FETCH_MINNANO_PROFILE, async (_event, name: string, sourceUrl?: string) => {
     ensureAuthenticated();
-    return fetchMinnanoActressProfile(name);
+    return fetchMinnanoActressProfile(name, sourceUrl);
   });
 
   ipcMain.handle(IPC_CHANNELS.CREATE_TIER, async (_event, input) => {

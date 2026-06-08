@@ -23,6 +23,7 @@ function actress(input: Partial<DesktopActress> & Pick<DesktopActress, 'name'>):
     hip: '',
     career_from: '',
     career_to: '',
+    minnano_url: '',
     tags: [],
     updated_at: input.updated_at ?? '2026-06-01T00:00:00.000Z',
   };

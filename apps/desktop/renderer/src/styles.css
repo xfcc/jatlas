@@ -14,6 +14,17 @@
   --red: #ff3333;
   --radius: 0;
   --terminal-glow: 0 0 5px rgba(51, 255, 0, 0.48);
+  --control-bg: #050805;
+  --control-hover-text: #050805;
+  --pre-bg: #09090b;
+  --pre-text: #d4d4d8;
+  --row-hover-bg: rgba(51, 255, 0, 0.08);
+  --body-scanline: rgba(51, 255, 0, 0.035);
+  --body-grid-x: rgba(31, 82, 31, 0.2);
+  --body-grid-y: rgba(31, 82, 31, 0.14);
+  --body-radial: rgba(51, 255, 0, 0.08);
+  --body-overlay: linear-gradient(rgba(51, 255, 0, 0.025), rgba(255, 176, 0, 0.012));
+  --body-overlay-blend: screen;
   color: var(--text);
   background: var(--bg);
   font-family:
@@ -21,6 +32,34 @@
   font-size: 14px;
   line-height: 1.5;
   text-rendering: geometricPrecision;
+}
+
+:root[data-theme='terminal-light'] {
+  --bg: #f7f7f2;
+  --panel: #ffffff;
+  --panel-soft: #f1f1ea;
+  --panel-muted: rgba(255, 255, 250, 0.92);
+  --line: #b7b7ab;
+  --line-soft: rgba(183, 183, 171, 0.72);
+  --text: #111111;
+  --text-soft: #2f2f2a;
+  --muted: #5f5f58;
+  --dim: #9a9a90;
+  --emerald: #0f6b3d;
+  --amber: #8a5a00;
+  --red: #b42318;
+  --terminal-glow: none;
+  --control-bg: #ffffff;
+  --control-hover-text: #ffffff;
+  --pre-bg: #f2f2ec;
+  --pre-text: #1d1d1b;
+  --row-hover-bg: rgba(15, 107, 61, 0.08);
+  --body-scanline: rgba(0, 0, 0, 0.018);
+  --body-grid-x: rgba(17, 17, 17, 0.06);
+  --body-grid-y: rgba(17, 17, 17, 0.04);
+  --body-radial: rgba(15, 107, 61, 0.06);
+  --body-overlay: linear-gradient(rgba(255, 255, 255, 0), rgba(0, 0, 0, 0.01));
+  --body-overlay-blend: multiply;
 }
 
 * {
@@ -37,10 +76,10 @@ body {
   margin: 0;
   min-width: 960px;
   background:
-    repeating-linear-gradient(to bottom, rgba(51, 255, 0, 0.035) 0, rgba(51, 255, 0, 0.035) 1px, transparent 1px, transparent 4px),
-    linear-gradient(to right, rgba(31, 82, 31, 0.2) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(31, 82, 31, 0.14) 1px, transparent 1px),
-    radial-gradient(circle at 80% -10%, rgba(51, 255, 0, 0.08), transparent 360px),
+    repeating-linear-gradient(to bottom, var(--body-scanline) 0, var(--body-scanline) 1px, transparent 1px, transparent 4px),
+    linear-gradient(to right, var(--body-grid-x) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--body-grid-y) 1px, transparent 1px),
+    radial-gradient(circle at 80% -10%, var(--body-radial), transparent 360px),
     var(--bg);
   background-size: auto, 40px 40px, 40px 40px, auto, auto;
 }
@@ -51,8 +90,8 @@ body::before {
   inset: 0;
   z-index: 999;
   pointer-events: none;
-  background: linear-gradient(rgba(51, 255, 0, 0.025), rgba(255, 176, 0, 0.012));
-  mix-blend-mode: screen;
+  background: var(--body-overlay);
+  mix-blend-mode: var(--body-overlay-blend);
 }
 
 button,
@@ -67,7 +106,7 @@ button {
   border-radius: 0;
   padding: 7px 12px;
   color: var(--text) !important;
-  background: #050805 !important;
+  background: var(--control-bg) !important;
   box-shadow: none;
   cursor: pointer;
   text-transform: uppercase;
@@ -81,7 +120,7 @@ button {
 
 button:hover:not(:disabled):not(.asset-category-card) {
   border-color: var(--emerald) !important;
-  color: #050805 !important;
+  color: var(--control-hover-text) !important;
   background: var(--emerald) !important;
   text-shadow: none;
 }
@@ -92,7 +131,7 @@ button:active:not(:disabled) {
 
 button:disabled {
   color: var(--dim) !important;
-  background: #050805 !important;
+  background: var(--control-bg) !important;
   cursor: not-allowed;
 }
 
@@ -111,7 +150,7 @@ select {
   border-radius: 0;
   padding: 7px 11px;
   color: var(--text) !important;
-  background: #050805 !important;
+  background: var(--control-bg) !important;
   outline: none;
   transition:
     border-color 120ms ease,
@@ -190,7 +229,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: rgba(51, 255, 0, 0.08) !important;
+  background: var(--row-hover-bg) !important;
 }
 
 code {
@@ -198,15 +237,15 @@ code {
   border-radius: 0;
   padding: 2px 6px;
   color: var(--amber);
-  background: #050805;
+  background: var(--control-bg);
   word-break: break-all;
 }
 
 pre {
   border: 1px solid var(--line) !important;
   white-space: pre-wrap;
-  color: #d4d4d8 !important;
-  background: #09090b !important;
+  color: var(--pre-text) !important;
+  background: var(--pre-bg) !important;
 }
 
 .app-shell {
@@ -1701,6 +1740,12 @@ body {
   overflow: visible;
 }
 
+.activity-terminal-output::after {
+  content: '';
+  display: block;
+  height: 45vh;
+}
+
 .activity-terminal-line {
   min-height: 1.72em;
 }
@@ -1826,4 +1871,90 @@ body {
   .activity-event-compact .activity-event-detail {
     grid-column: 2 / 3;
   }
+}
+
+:root[data-theme='terminal-light'] .desktop-surface,
+:root[data-theme='terminal-light'] .workspace-shell,
+:root[data-theme='terminal-light'] .function-pane,
+:root[data-theme='terminal-light'] .operation-pane,
+:root[data-theme='terminal-light'] .operation-pane-body,
+:root[data-theme='terminal-light'] .activity-log-pane,
+:root[data-theme='terminal-light'] .activity-panel,
+:root[data-theme='terminal-light'] .activity-icon-button,
+:root[data-theme='terminal-light'] .setup-choice-card,
+:root[data-theme='terminal-light'] .setup-choice-card code,
+:root[data-theme='terminal-light'] .workspace-header,
+:root[data-theme='terminal-light'] .workspace-tabs,
+:root[data-theme='terminal-light'] .workspace-tab,
+:root[data-theme='terminal-light'] .activity-panel-header,
+:root[data-theme='terminal-light'] .activity-panel-body,
+:root[data-theme='terminal-light'] .activity-terminal-output,
+:root[data-theme='terminal-light'] .intro-terminal,
+:root[data-theme='terminal-light'] .intro-terminal-section,
+:root[data-theme='terminal-light'] .intro-status-list,
+:root[data-theme='terminal-light'] .intro-status-list span,
+:root[data-theme='terminal-light'] .intro-problem-grid article,
+:root[data-theme='terminal-light'] .intro-module-list article,
+:root[data-theme='terminal-light'] .intro-flow li,
+:root[data-theme='terminal-light'] .intro-boundary,
+:root[data-theme='terminal-light'] .asset-category-card,
+:root[data-theme='terminal-light'] .asset-category-card-top span,
+:root[data-theme='terminal-light'] .entity-form-section,
+:root[data-theme='terminal-light'] .workspace-shell h2 + div > div,
+:root[data-theme='terminal-light'] .workspace-shell ul,
+:root[data-theme='terminal-light'] .activity-inline-hint,
+:root[data-theme='terminal-light'] .workspace-splitter,
+:root[data-theme='terminal-light'] .activity-log-pane.is-collapsed .activity-log-header {
+  background: var(--panel-muted) !important;
+}
+
+:root[data-theme='terminal-light'] section,
+:root[data-theme='terminal-light'] table,
+:root[data-theme='terminal-light'] thead tr,
+:root[data-theme='terminal-light'] tbody tr,
+:root[data-theme='terminal-light'] .workspace-tab.active {
+  background-color: transparent !important;
+}
+
+:root[data-theme='terminal-light'] .workspace-tab.active,
+:root[data-theme='terminal-light'] .asset-category-card:hover,
+:root[data-theme='terminal-light'] .asset-category-card:focus-visible {
+  background:
+    linear-gradient(180deg, rgba(15, 107, 61, 0.1), rgba(15, 107, 61, 0.025)),
+    var(--panel) !important;
+}
+
+:root[data-theme='terminal-light'] .workspace-splitter:hover,
+:root[data-theme='terminal-light'] .workspace-splitter:focus {
+  background: rgba(15, 107, 61, 0.12) !important;
+}
+
+:root[data-theme='terminal-light'] .workspace-splitter.is-disabled:hover,
+:root[data-theme='terminal-light'] .workspace-splitter.is-disabled:focus {
+  background: var(--panel-muted) !important;
+}
+
+:root[data-theme='terminal-light'] .activity-terminal-output {
+  background:
+    linear-gradient(rgba(0, 0, 0, 0.018) 50%, transparent 50%) 0 0 / 100% 6px,
+    var(--panel) !important;
+}
+
+:root[data-theme='terminal-light'] .activity-terminal-line,
+:root[data-theme='terminal-light'] .activity-empty,
+:root[data-theme='terminal-light'] td,
+:root[data-theme='terminal-light'] p {
+  text-shadow: none !important;
+}
+
+:root[data-theme='terminal-light'] button:hover:not(:disabled):not(.asset-category-card),
+:root[data-theme='terminal-light'] .activity-log-title-toggle:hover:not(:disabled),
+:root[data-theme='terminal-light'] .workspace-tab:hover:not(.active) {
+  color: var(--control-hover-text) !important;
+  background: var(--emerald) !important;
+}
+
+:root[data-theme='terminal-light'] .danger-action-button:hover:not(:disabled) {
+  color: #ffffff !important;
+  background: var(--red) !important;
 }

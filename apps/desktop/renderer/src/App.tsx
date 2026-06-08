@@ -41,6 +41,12 @@ import {
 } from './assetHealth';
 import { clampFunctionPaneWidth, defaultFunctionPaneWidth } from './splitPaneState';
 import { terminalProgressBar, type TerminalStatusTone } from './terminalDesign';
+import {
+  desktopThemeAttribute,
+  desktopThemeOptions,
+  normalizeDesktopThemeMode,
+  type DesktopThemeMode,
+} from './terminalTheme';
 import { buildAssetCategoryCards, workspaceTabs, type WorkspaceTab } from './workspaceNavigation';
 
 type EditorView =
@@ -439,6 +445,7 @@ export function App() {
   const [defaultDatabaseUrl, setDefaultDatabaseUrl] = useState('');
   const [embyServerUrl, setEmbyServerUrl] = useState('');
   const [embyApiKey, setEmbyApiKey] = useState('');
+  const [themeMode, setThemeMode] = useState<DesktopThemeMode>('dark');
   const [storageRootPath, setStorageRootPath] = useState('');
   const [tierStoragePaths, setTierStoragePaths] = useState<Record<string, string>>({});
   const [runtimeConfigBaseline, setRuntimeConfigBaseline] = useState<DesktopRuntimeConfig | null>(null);
@@ -463,6 +470,7 @@ export function App() {
   const [hipInput, setHipInput] = useState('');
   const [careerFromInput, setCareerFromInput] = useState('');
   const [careerToInput, setCareerToInput] = useState('');
+  const [minnanoUrlInput, setMinnanoUrlInput] = useState('');
   const [profileTagsInput, setProfileTagsInput] = useState('');
   const [minnanoFetching, setMinnanoFetching] = useState(false);
 
@@ -491,6 +499,8 @@ export function App() {
   const [storageFolders, setStorageFolders] = useState<string[] | null>(null);
   const [tierActressSortKey, setTierActressSortKey] = useState<ActressSortKey>('video_count');
   const [tierActressSortDirection, setTierActressSortDirection] = useState<SortDirection>('desc');
+  const activityLogBodyRef = useRef<HTMLDivElement | null>(null);
+  const activityLogLastLineRef = useRef<HTMLDivElement | null>(null);
   const tempIdRef = useRef(-1);
 
   const stopPoll = () => {
@@ -501,6 +511,10 @@ export function App() {
   };
 
   useEffect(() => () => stopPoll(), []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = desktopThemeAttribute(themeMode);
+  }, [themeMode]);
 
   useEffect(() => {
     const onResize = () => {
@@ -559,6 +573,7 @@ export function App() {
           setSelectedDatabasePath(databasePathFromUrl(config.databaseUrl));
           setEmbyServerUrl(config.embyServerUrl ?? '');
           setEmbyApiKey(config.embyApiKey ?? '');
+          setThemeMode(normalizeDesktopThemeMode(config.themeMode));
           setStorageRootPath(config.storageRootPath ?? '');
           setTierStoragePaths(config.tierStoragePaths ?? {});
           setRuntimeConfigBaseline(config);
@@ -681,11 +696,15 @@ export function App() {
 
   const getCachedTierStoragePath = (id: number) => tierStoragePaths[String(id)] ?? storageRootPath;
 
-  const runtimeConfigWithPaths = (paths: Record<string, string>): DesktopRuntimeConfig => ({
+  const runtimeConfigWithPaths = (
+    paths: Record<string, string>,
+    nextThemeMode: DesktopThemeMode = themeMode,
+  ): DesktopRuntimeConfig => ({
     dbMode: 'sqlite',
     databaseUrl,
     embyServerUrl: embyServerUrl.trim() || undefined,
     embyApiKey: embyApiKey.trim() || undefined,
+    themeMode: nextThemeMode,
     tierStoragePaths: compactTierStoragePaths(paths),
     storageRootPath: storageRootPath.trim() || undefined,
   });
@@ -799,6 +818,7 @@ export function App() {
       const config: DesktopRuntimeConfig = {
         dbMode: 'sqlite',
         databaseUrl: nextDatabaseUrl,
+        themeMode,
       };
       const result = await window.desktopApi.saveConfigAndInit(config);
       setBootstrap(result);
@@ -846,6 +866,7 @@ export function App() {
       const saved = await window.desktopApi.saveRuntimeConfig(nextConfig);
       setEmbyServerUrl(saved.embyServerUrl ?? '');
       setEmbyApiKey(saved.embyApiKey ?? '');
+      setThemeMode(normalizeDesktopThemeMode(saved.themeMode));
       setStorageRootPath(saved.storageRootPath ?? '');
       setTierStoragePaths(saved.tierStoragePaths ?? {});
       setRuntimeConfigBaseline(saved);
@@ -853,6 +874,30 @@ export function App() {
       appendActivity(createRuntimeSettingsActivity(getRuntimeSettingsChanges(runtimeConfigBaseline, saved)));
     } catch (e) {
       const detail = e instanceof Error ? e.message : '保存设置失败';
+      setError(detail);
+      appendActivity(createRuntimeSettingsFailureActivity(detail));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onChangeThemeMode = async (value: DesktopThemeMode) => {
+    const nextThemeMode = normalizeDesktopThemeMode(value);
+    if (nextThemeMode === themeMode) return;
+    setThemeMode(nextThemeMode);
+    setSaving(true);
+    setError(null);
+    setSettingsMessage('');
+    try {
+      const nextConfig = runtimeConfigWithPaths(tierStoragePaths, nextThemeMode);
+      const saved = await window.desktopApi.saveRuntimeConfig(nextConfig);
+      const savedThemeMode = normalizeDesktopThemeMode(saved.themeMode);
+      setThemeMode(savedThemeMode);
+      setRuntimeConfigBaseline(saved);
+      setSettingsMessage('视觉模式已保存。');
+      appendActivity(createRuntimeSettingsActivity(getRuntimeSettingsChanges(runtimeConfigBaseline, saved)));
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : '保存视觉模式失败';
       setError(detail);
       appendActivity(createRuntimeSettingsFailureActivity(detail));
     } finally {
@@ -1078,6 +1123,7 @@ export function App() {
     setHipInput('');
     setCareerFromInput('');
     setCareerToInput('');
+    setMinnanoUrlInput('');
     setProfileTagsInput('');
     setMinnanoFetching(false);
     if (tiers.length > 0) {
@@ -1095,10 +1141,18 @@ export function App() {
     setMinnanoFetching(true);
     setError(null);
     setIsLogPaneOpen(true);
-    appendActivity(createSimpleActivity('获取 Minnano 更新', `开始基于「${actorName}」抓取资料。`, 'success', actorName));
+    const sourceUrl = minnanoUrlInput.trim();
+    appendActivity(
+      createSimpleActivity(
+        '获取 Minnano 更新',
+        sourceUrl ? `开始通过 Minnano 来源地址抓取资料：${sourceUrl}` : `开始基于「${actorName}」抓取资料。`,
+        'success',
+        actorName,
+      ),
+    );
 
     try {
-      const profile = await window.desktopApi.fetchMinnanoProfile(actorName);
+      const profile = await window.desktopApi.fetchMinnanoProfile(actorName, sourceUrl || undefined);
       const fieldChanges: string[] = [];
       const applyText = (label: string, value: string, setter: (next: string) => void) => {
         const next = value.trim();
@@ -1122,6 +1176,7 @@ export function App() {
       applyText('出演开始', profile.career_from, setCareerFromInput);
       applyText('出演结束', profile.career_to, setCareerToInput);
       applyList('标签', profile.tags, setProfileTagsInput);
+      applyText('Minnano 来源地址', profile.sourceUrl, setMinnanoUrlInput);
 
       const summary =
         fieldChanges.length > 0
@@ -1159,6 +1214,7 @@ export function App() {
       hip: hipInput,
       career_from: careerFromInput,
       career_to: careerToInput,
+      minnano_url: minnanoUrlInput,
       tags: parseCommaSeparatedValues(profileTagsInput),
     };
     const tierNameForInput = tiers.find((t) => t.id === input.tierId)?.name ?? `分类 #${input.tierId}`;
@@ -1182,6 +1238,7 @@ export function App() {
       hip: input.hip ?? '',
       career_from: input.career_from ?? '',
       career_to: input.career_to ?? '',
+      minnano_url: input.minnano_url ?? '',
       tags: input.tags ?? [],
       updated_at:
         previousRow && previousRow.video_count === input.video_count
@@ -1272,6 +1329,7 @@ export function App() {
     setHipInput(row.hip);
     setCareerFromInput(row.career_from);
     setCareerToInput(row.career_to);
+    setMinnanoUrlInput(row.minnano_url);
     setProfileTagsInput(row.tags.join(', '));
   };
 
@@ -1394,10 +1452,20 @@ export function App() {
       ? taskToActivitySnapshot(syncTaskState, activePollingTaskId ?? syncTaskState.taskId ?? 'active-task')
       : null;
   const visibleActivities = activeActivity ? [activeActivity, ...activityHistory] : activityHistory;
+  const terminalLines = [...visibleActivities].reverse().flatMap((activity) => formatActivityTerminalLines(activity));
+  const terminalLineSignal = terminalLines.map((line) => line.id).join('|');
   const hasRunningActivity = Boolean(activeActivity);
   const hasFailedActivity = visibleActivities.some(
     (activity) => activity.status.startsWith('error:') || activity.events.some((event) => event.result === 'error'),
   );
+
+  useEffect(() => {
+    if (!isLogPaneOpen || terminalLines.length === 0) return;
+    const frame = window.requestAnimationFrame(() => {
+      activityLogLastLineRef.current?.scrollIntoView({ block: 'center' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isLogPaneOpen, terminalLineSignal, terminalLines.length]);
 
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
@@ -1780,6 +1848,20 @@ export function App() {
             </section>
 
             <section className="entity-form-section">
+              <h3>数据源</h3>
+              <div className="entity-form-grid">
+                <label className="entity-form-field-wide">
+                  Minnano 网页地址 / Minnano URL
+                  <input
+                    placeholder="例如 https://www.minnano-av.com/actress832690.html"
+                    value={minnanoUrlInput}
+                    onChange={(e) => setMinnanoUrlInput(e.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section className="entity-form-section">
               <div className="entity-form-section-header">
                 <h3>女优情报</h3>
                 <button
@@ -1788,7 +1870,7 @@ export function App() {
                   disabled={minnanoFetching || !name.trim()}
                   title={!name.trim() ? '请先填写演员名称。' : undefined}
                 >
-                  {minnanoFetching ? '获取中...' : '获取 Minnano 更新'}
+                  {minnanoFetching ? '获取中...' : '获取更新'}
                 </button>
               </div>
               <div className="entity-form-grid">
@@ -2115,6 +2197,21 @@ export function App() {
               </div>
             </label>
             <label>
+              视觉模式
+              <select
+                value={themeMode}
+                onChange={(e) => void onChangeThemeMode(normalizeDesktopThemeMode(e.target.value))}
+                disabled={saving}
+                style={{ width: '100%' }}
+              >
+                {desktopThemeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               Emby 服务地址
               <input
                 style={{ width: '100%' }}
@@ -2238,18 +2335,17 @@ export function App() {
           ) : null}
         </header>
         {isLogPaneOpen ? (
-          <div className="activity-panel-body activity-log-body">
+          <div className="activity-panel-body activity-log-body" ref={activityLogBodyRef}>
             {visibleActivities.length === 0 ? (
               <div className="activity-empty">暂无操作日志。</div>
             ) : (
               <div className="activity-terminal-output" aria-label="终端日志输出">
-                {[...visibleActivities]
-                  .reverse()
-                  .flatMap((activity) => formatActivityTerminalLines(activity))
-                  .map((line) => (
+                {terminalLines
+                  .map((line, index) => (
                     <div
                       className={`activity-terminal-line is-${line.kind}${line.tone ? ` tone-${line.tone}` : ''}`}
                       key={line.id}
+                      ref={index === terminalLines.length - 1 ? activityLogLastLineRef : undefined}
                     >
                       {line.text}
                     </div>

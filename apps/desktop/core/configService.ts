@@ -6,10 +6,17 @@ export type DesktopRuntimeConfig = {
   databaseUrl: string;
   embyServerUrl?: string;
   embyApiKey?: string;
+  themeMode?: DesktopThemeMode;
   tierStoragePaths?: Record<string, string>;
   /** Legacy global default path kept so old desktop-config.json files continue to load. */
   storageRootPath?: string;
 };
+
+export type DesktopThemeMode = 'dark' | 'light';
+
+export function normalizeDesktopThemeMode(value: unknown): DesktopThemeMode {
+  return value === 'light' ? 'light' : 'dark';
+}
 
 export function getDesktopConfigPath(userDataPath: string) {
   return path.join(userDataPath, 'desktop-config.json');

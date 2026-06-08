@@ -64,6 +64,7 @@ export type DesktopActress = {
   hip: string;
   career_from: string;
   career_to: string;
+  minnano_url: string;
   tags: string[];
   updated_at: string;
 };
@@ -83,6 +84,7 @@ export type DesktopActressInput = {
   hip?: string;
   career_from?: string;
   career_to?: string;
+  minnano_url?: string;
   tags?: string[];
 };
 
@@ -357,6 +359,7 @@ export async function getDesktopActresses(query?: string) {
       hip: row.hip,
       career_from: row.career_from,
       career_to: row.career_to,
+      minnano_url: row.minnano_url,
       tags: normalizeStringList(row.tags),
       updated_at: row.asset_updated_at.toISOString(),
     }),
@@ -380,6 +383,7 @@ export async function createDesktopActress(input: DesktopActressInput) {
       hip: input.hip?.trim() ?? '',
       career_from: input.career_from?.trim() ?? '',
       career_to: input.career_to?.trim() ?? '',
+      minnano_url: input.minnano_url?.trim() ?? '',
       tags: serializeStringList(input.tags),
     },
     include: { tier: true },
@@ -411,6 +415,7 @@ export async function createDesktopActress(input: DesktopActressInput) {
     hip: created.hip,
     career_from: created.career_from,
     career_to: created.career_to,
+    minnano_url: created.minnano_url,
     tags: normalizeStringList(created.tags),
     updated_at: created.asset_updated_at.toISOString(),
   } as DesktopActress;
@@ -440,6 +445,7 @@ export async function updateDesktopActress(id: number, input: DesktopActressInpu
       hip: input.hip?.trim() ?? '',
       career_from: input.career_from?.trim() ?? '',
       career_to: input.career_to?.trim() ?? '',
+      minnano_url: input.minnano_url?.trim() ?? '',
       tags: serializeStringList(input.tags),
       ...(videoCountChanged ? { asset_updated_at: new Date() } : {}),
     },
@@ -475,6 +481,7 @@ export async function updateDesktopActress(id: number, input: DesktopActressInpu
     hip: updated.hip,
     career_from: updated.career_from,
     career_to: updated.career_to,
+    minnano_url: updated.minnano_url,
     tags: normalizeStringList(updated.tags),
     updated_at: updated.asset_updated_at.toISOString(),
   } as DesktopActress;
@@ -562,6 +569,7 @@ export async function importDesktopTierFoldersAsActresses(
             hip: '',
             career_from: '',
             career_to: '',
+            minnano_url: '',
             tags: serializeStringList([]),
           },
           include: { tier: true },
@@ -597,6 +605,7 @@ export async function importDesktopTierFoldersAsActresses(
       hip: row.hip,
       career_from: row.career_from,
       career_to: row.career_to,
+      minnano_url: row.minnano_url,
       tags: normalizeStringList(row.tags),
       updated_at: row.asset_updated_at.toISOString(),
     }),

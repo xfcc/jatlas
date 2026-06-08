@@ -2,7 +2,11 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import type { DesktopRuntimeConfig } from '../../apps/desktop/core/configService';
-import { loadDesktopRuntimeConfig, saveDesktopRuntimeConfig } from '../../apps/desktop/core/configService';
+import {
+  loadDesktopRuntimeConfig,
+  normalizeDesktopThemeMode,
+  saveDesktopRuntimeConfig,
+} from '../../apps/desktop/core/configService';
 
 describe('desktop runtime config', () => {
   let tempDir: string;
@@ -28,5 +32,23 @@ describe('desktop runtime config', () => {
     await saveDesktopRuntimeConfig(tempDir, config);
 
     await expect(loadDesktopRuntimeConfig(tempDir)).resolves.toEqual(config);
+  });
+
+  it('persists the selected terminal theme mode', async () => {
+    const config: DesktopRuntimeConfig = {
+      dbMode: 'sqlite',
+      databaseUrl: 'file:/tmp/jatlas.db',
+      themeMode: 'light',
+    };
+
+    await saveDesktopRuntimeConfig(tempDir, config);
+
+    await expect(loadDesktopRuntimeConfig(tempDir)).resolves.toEqual(config);
+  });
+
+  it('normalizes missing or invalid theme modes to dark mode', () => {
+    expect(normalizeDesktopThemeMode(undefined)).toBe('dark');
+    expect(normalizeDesktopThemeMode('light')).toBe('light');
+    expect(normalizeDesktopThemeMode('invalid')).toBe('dark');
   });
 });

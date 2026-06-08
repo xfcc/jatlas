@@ -67,6 +67,7 @@ type DesktopApi = {
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.DELETE_ACTRESS]['result']>;
   fetchMinnanoProfile: (
     name: IpcInvokeMap[typeof IPC_CHANNELS.FETCH_MINNANO_PROFILE]['args'][0],
+    sourceUrl?: IpcInvokeMap[typeof IPC_CHANNELS.FETCH_MINNANO_PROFILE]['args'][1],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.FETCH_MINNANO_PROFILE]['result']>;
   createTier: (
     input: IpcInvokeMap[typeof IPC_CHANNELS.CREATE_TIER]['args'][0],
@@ -127,7 +128,7 @@ const desktopApi: DesktopApi = {
   createActress: (input) => ipcRenderer.invoke(IPC_CHANNELS.CREATE_ACTRESS, input),
   updateActress: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_ACTRESS, id, input),
   deleteActress: (id) => ipcRenderer.invoke(IPC_CHANNELS.DELETE_ACTRESS, id),
-  fetchMinnanoProfile: (name) => ipcRenderer.invoke(IPC_CHANNELS.FETCH_MINNANO_PROFILE, name),
+  fetchMinnanoProfile: (name, sourceUrl) => ipcRenderer.invoke(IPC_CHANNELS.FETCH_MINNANO_PROFILE, name, sourceUrl),
   createTier: (input) => ipcRenderer.invoke(IPC_CHANNELS.CREATE_TIER, input),
   updateTier: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_TIER, id, input),
   deleteTier: (id) => ipcRenderer.invoke(IPC_CHANNELS.DELETE_TIER, id),

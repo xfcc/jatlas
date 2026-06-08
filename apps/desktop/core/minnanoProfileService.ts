@@ -49,6 +49,30 @@ function firstMatch(html: string, pattern: RegExp) {
   return pattern.exec(html)?.[1]?.trim() ?? '';
 }
 
+function normalizeMinnanoProfileUrl(rawUrl: string) {
+  const value = rawUrl.trim();
+  if (!value) return '';
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('Minnano 页面地址格式不正确。');
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    throw new Error('Minnano 页面地址必须是 http 或 https。');
+  }
+  if (parsed.hostname !== 'www.minnano-av.com' && parsed.hostname !== 'minnano-av.com') {
+    throw new Error('Minnano 页面地址必须来自 minnano-av.com。');
+  }
+  if (!/^\/actress\d+\.html$/i.test(parsed.pathname)) {
+    throw new Error('Minnano 页面地址必须是女优详情页，例如 https://www.minnano-av.com/actress832690.html。');
+  }
+  parsed.protocol = 'https:';
+  parsed.hostname = 'www.minnano-av.com';
+  parsed.hash = '';
+  return parsed.toString();
+}
+
 function isRomanName(value: string) {
   return /^[A-Za-z][A-Za-z\s.'-]*$/.test(value.trim());
 }
@@ -168,10 +192,23 @@ export function parseMinnanoActressProfileHtml(html: string, fallbackUrl: string
   return profile;
 }
 
-export async function fetchMinnanoActressProfile(name: string): Promise<MinnanoActressProfile> {
+async function fetchMinnanoProfilePage(url: string) {
+  const response = await fetch(url, { headers: MINNANO_HEADERS });
+  if (!response.ok) {
+    throw new Error(`Minnano 详情请求失败：${response.status} ${response.statusText}`.trim());
+  }
+  return parseMinnanoActressProfileHtml(await response.text(), response.url || url);
+}
+
+export async function fetchMinnanoActressProfile(name: string, sourceUrl?: string): Promise<MinnanoActressProfile> {
   const query = name.trim();
   if (!query) {
     throw new Error('请先填写演员名称。');
+  }
+
+  const directUrl = sourceUrl ? normalizeMinnanoProfileUrl(sourceUrl) : '';
+  if (directUrl) {
+    return fetchMinnanoProfilePage(directUrl);
   }
 
   const url = `${MINNANO_BASE_URL}/search_result.php?search_scope=actress&search_word=${encodeURIComponent(query)}`;
@@ -192,9 +229,5 @@ export async function fetchMinnanoActressProfile(name: string): Promise<MinnanoA
   }
 
   const profileUrl = `${MINNANO_BASE_URL}/${firstActressPath}`;
-  const profileResponse = await fetch(profileUrl, { headers: MINNANO_HEADERS });
-  if (!profileResponse.ok) {
-    throw new Error(`Minnano 详情请求失败：${profileResponse.status} ${profileResponse.statusText}`.trim());
-  }
-  return parseMinnanoActressProfileHtml(await profileResponse.text(), profileResponse.url || profileUrl);
+  return fetchMinnanoProfilePage(profileUrl);
 }
