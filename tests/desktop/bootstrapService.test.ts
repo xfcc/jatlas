@@ -41,30 +41,27 @@ describe('initializeDatabaseForDesktop', () => {
 
     await initializeDatabaseForDesktop({ dbMode: 'sqlite', databaseUrl: `file:${dbPath}` }, process.cwd());
 
-    expect(execFile).toHaveBeenCalledTimes(1);
+    expect(execFile).not.toHaveBeenCalled();
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "Tier"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "Actress"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "AssetLog"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('total_video_limit'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"status" = \'active\''));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"career_from"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"asset_updated_at" = "updated_at"'));
-    expect(mockDisconnect).toHaveBeenCalledTimes(5);
+    expect(mockDisconnect).toHaveBeenCalledTimes(6);
   });
 
-  it('runs Prisma schema sync with a timeout when the SQLite database is empty', async () => {
+  it('initializes an empty SQLite database without spawning Prisma CLI', async () => {
     const dbPath = path.join(tempDir, 'jatlas.db');
     await fs.writeFile(dbPath, '');
 
     await initializeDatabaseForDesktop({ dbMode: 'sqlite', databaseUrl: `file:${dbPath}` }, process.cwd());
 
-    expect(execFile).toHaveBeenCalledTimes(1);
-    expect(execFile).toHaveBeenCalledWith(
-      process.execPath,
-      expect.arrayContaining(['db', 'push', '--skip-generate']),
-      expect.objectContaining({
-        timeout: 30_000,
-        windowsHide: true,
-      }),
-      expect.any(Function),
-    );
+    expect(execFile).not.toHaveBeenCalled();
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "Tier"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "Actress"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "AssetLog"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('COALESCE("Tier"."video_limit", 100)'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"Actress"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"birthday"'));

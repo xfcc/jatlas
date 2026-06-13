@@ -1,18 +1,18 @@
-import { execFile } from 'child_process';
 import { PrismaClient } from '@prisma/client';
 import fs from 'fs/promises';
 import path from 'path';
-import { promisify } from 'util';
 import type { DesktopRuntimeConfig } from './configService';
-
-const execFileAsync = promisify(execFile);
-const PRISMA_DB_PUSH_TIMEOUT_MS = 30_000;
 
 export type DesktopBootstrapState = {
   configured: boolean;
   initialized: boolean;
   configPath: string;
   message: string;
+};
+
+type ColumnDefinition = {
+  name: string;
+  sql: string;
 };
 
 function sqlitePathFromDatabaseUrl(databaseUrl: string): string {
@@ -36,6 +36,16 @@ async function hasExistingDatabase(databaseUrl: string): Promise<boolean> {
   }
 }
 
+async function ensureDatabaseDirectory(databaseUrl: string) {
+  const dbPath = sqlitePathFromDatabaseUrl(databaseUrl);
+  await fs.mkdir(path.dirname(dbPath), { recursive: true });
+}
+
+async function getTableColumns(client: PrismaClient, tableName: string): Promise<Set<string>> {
+  const rows = await client.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("${tableName}")`);
+  return new Set(rows.map((row) => row.name));
+}
+
 async function hasActressColumn(databaseUrl: string, columnName: string): Promise<boolean> {
   if (!(await hasExistingDatabase(databaseUrl))) return false;
   const client = new PrismaClient({
@@ -46,8 +56,7 @@ async function hasActressColumn(databaseUrl: string, columnName: string): Promis
     },
   });
   try {
-    const rows = await client.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("Actress")`);
-    return rows.some((row) => row.name === columnName);
+    return (await getTableColumns(client, 'Actress')).has(columnName);
   } catch {
     return false;
   } finally {
@@ -55,36 +64,121 @@ async function hasActressColumn(databaseUrl: string, columnName: string): Promis
   }
 }
 
-async function runPrismaDbPush(databaseUrl: string, cwd: string) {
-  const baseEnv = { ...process.env };
-  delete baseEnv.ELECTRON_RUN_AS_NODE;
-  delete baseEnv.NODE_OPTIONS;
-  const runtimeRoot = cwd.includes('app.asar') ? cwd.replace('app.asar', 'app.asar.unpacked') : cwd;
-  const schemaEnginePath = path.join(
-    runtimeRoot,
-    'node_modules',
-    '@prisma',
-    'engines',
-    process.platform === 'win32' ? 'schema-engine-windows.exe' : `schema-engine-${process.platform}-${process.arch}`,
-  );
-  const prismaCli = path.join(runtimeRoot, 'node_modules', 'prisma', 'build', 'index.js');
-  const schemaPath = path.join(runtimeRoot, 'prisma', 'schema.prisma');
+async function ensureColumns(client: PrismaClient, tableName: string, columns: ColumnDefinition[]) {
+  const existing = await getTableColumns(client, tableName);
+  for (const column of columns) {
+    if (!existing.has(column.name)) {
+      await client.$executeRawUnsafe(`ALTER TABLE "${tableName}" ADD COLUMN ${column.sql}`);
+    }
+  }
+}
 
-  await Promise.all([fs.access(schemaEnginePath), fs.access(prismaCli), fs.access(schemaPath)]);
-
-  const env = {
-    ...baseEnv,
-    DATABASE_URL: databaseUrl,
-    ELECTRON_RUN_AS_NODE: '1',
-    RUST_LOG: 'info',
-    PRISMA_SCHEMA_ENGINE_BINARY: schemaEnginePath,
-  };
-  await execFileAsync(process.execPath, [prismaCli, 'db', 'push', '--skip-generate', '--schema', schemaPath], {
-    cwd: runtimeRoot,
-    env,
-    timeout: PRISMA_DB_PUSH_TIMEOUT_MS,
-    windowsHide: true,
+async function ensureDesktopSchema(databaseUrl: string) {
+  await ensureDatabaseDirectory(databaseUrl);
+  const client = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
   });
+  try {
+    await client.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Tier" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" TEXT NOT NULL,
+        "video_limit" INTEGER,
+        "total_video_limit" INTEGER,
+        "status" TEXT NOT NULL DEFAULT 'active',
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL
+      )
+    `);
+    await client.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Actress" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "name" TEXT NOT NULL,
+        "tierId" INTEGER NOT NULL,
+        "video_count" INTEGER NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'active',
+        "emby_id" TEXT NOT NULL DEFAULT '[]',
+        "roman" TEXT NOT NULL DEFAULT '',
+        "aliases" TEXT NOT NULL DEFAULT '[]',
+        "birthday" TEXT NOT NULL DEFAULT '',
+        "cup" TEXT NOT NULL DEFAULT '',
+        "bust" TEXT NOT NULL DEFAULT '',
+        "waist" TEXT NOT NULL DEFAULT '',
+        "hip" TEXT NOT NULL DEFAULT '',
+        "career_from" TEXT NOT NULL DEFAULT '',
+        "career_to" TEXT NOT NULL DEFAULT '',
+        "minnano_url" TEXT NOT NULL DEFAULT '',
+        "measurements" TEXT NOT NULL DEFAULT '',
+        "birth_date" TEXT NOT NULL DEFAULT '',
+        "career_period" TEXT NOT NULL DEFAULT '',
+        "cup_size" TEXT NOT NULL DEFAULT '',
+        "height" TEXT NOT NULL DEFAULT '',
+        "tags" TEXT NOT NULL DEFAULT '[]',
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "asset_updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL,
+        CONSTRAINT "Actress_tierId_fkey" FOREIGN KEY ("tierId") REFERENCES "Tier" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+      )
+    `);
+    await client.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "AssetLog" (
+        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "actress_id" INTEGER NOT NULL,
+        "actress_name" TEXT NOT NULL,
+        "action_type" TEXT NOT NULL,
+        "video_delta" INTEGER NOT NULL,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL
+      )
+    `);
+    await ensureColumns(client, 'Tier', [
+      { name: 'video_limit', sql: '"video_limit" INTEGER' },
+      { name: 'total_video_limit', sql: '"total_video_limit" INTEGER' },
+      { name: 'status', sql: '"status" TEXT NOT NULL DEFAULT \'active\'' },
+      { name: 'created_at', sql: '"created_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+      { name: 'updated_at', sql: '"updated_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+    ]);
+    await ensureColumns(client, 'Actress', [
+      { name: 'video_count', sql: '"video_count" INTEGER NOT NULL DEFAULT 0' },
+      { name: 'status', sql: '"status" TEXT NOT NULL DEFAULT \'active\'' },
+      { name: 'emby_id', sql: '"emby_id" TEXT NOT NULL DEFAULT \'[]\'' },
+      { name: 'roman', sql: '"roman" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'aliases', sql: '"aliases" TEXT NOT NULL DEFAULT \'[]\'' },
+      { name: 'birthday', sql: '"birthday" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'cup', sql: '"cup" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'bust', sql: '"bust" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'waist', sql: '"waist" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'hip', sql: '"hip" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'career_from', sql: '"career_from" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'career_to', sql: '"career_to" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'minnano_url', sql: '"minnano_url" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'measurements', sql: '"measurements" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'birth_date', sql: '"birth_date" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'career_period', sql: '"career_period" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'cup_size', sql: '"cup_size" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'height', sql: '"height" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'tags', sql: '"tags" TEXT NOT NULL DEFAULT \'[]\'' },
+      { name: 'created_at', sql: '"created_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+      { name: 'asset_updated_at', sql: '"asset_updated_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+      { name: 'updated_at', sql: '"updated_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+    ]);
+    await ensureColumns(client, 'AssetLog', [
+      { name: 'actress_id', sql: '"actress_id" INTEGER NOT NULL DEFAULT 0' },
+      { name: 'actress_name', sql: '"actress_name" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'action_type', sql: '"action_type" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'video_delta', sql: '"video_delta" INTEGER NOT NULL DEFAULT 0' },
+      { name: 'created_at', sql: '"created_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+      { name: 'updated_at', sql: '"updated_at" DATETIME NOT NULL DEFAULT \'1970-01-01 00:00:00\'' },
+    ]);
+    await client.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "Tier_name_key" ON "Tier"("name")');
+    await client.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "Actress_name_key" ON "Actress"("name")');
+  } finally {
+    await client.$disconnect();
+  }
 }
 
 async function backfillTierTotalVideoLimits(databaseUrl: string) {
@@ -199,10 +293,10 @@ async function backfillActressAssetUpdatedAt(databaseUrl: string) {
   }
 }
 
-export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig, cwd: string) {
+export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig, _cwd: string) {
   await hasExistingDatabase(config.databaseUrl);
   const hadAssetUpdatedAt = await hasActressColumn(config.databaseUrl, 'asset_updated_at');
-  await runPrismaDbPush(config.databaseUrl, cwd);
+  await ensureDesktopSchema(config.databaseUrl);
   await backfillTierTotalVideoLimits(config.databaseUrl);
   await backfillActressStatuses(config.databaseUrl);
   await backfillActressProfileFields(config.databaseUrl);

@@ -39,6 +39,7 @@ import {
   type ActressSortKey,
   type SortDirection,
 } from './assetHealth';
+import { getBootstrapFailureMessage } from './bootstrapState';
 import { clampFunctionPaneWidth, defaultFunctionPaneWidth } from './splitPaneState';
 import { terminalProgressBar, type TerminalStatusTone } from './terminalDesign';
 import {
@@ -556,6 +557,10 @@ export function App() {
     void (async () => {
       const state = await window.desktopApi.getBootstrapState();
       setBootstrap(state);
+      const bootstrapFailure = getBootstrapFailureMessage(state);
+      if (bootstrapFailure) {
+        setError(bootstrapFailure);
+      }
       if (!state.configured && state.configPath) {
         const defaultFile = await window.desktopApi.getDefaultDatabaseFile().catch(() => null);
         const defaultUrl = defaultFile?.databaseUrl ?? defaultDatabaseUrlFromConfigPath(state.configPath);
@@ -823,6 +828,10 @@ export function App() {
       const result = await window.desktopApi.saveConfigAndInit(config);
       setBootstrap(result);
       setAuthenticated(result.initialized);
+      const bootstrapFailure = getBootstrapFailureMessage(result);
+      if (bootstrapFailure) {
+        setError(bootstrapFailure);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存桌面配置失败');
     } finally {
