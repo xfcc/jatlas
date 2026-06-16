@@ -1054,6 +1054,15 @@ pre {
   min-width: 0;
 }
 
+.actress-avatar-thumb {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-soft);
+  object-fit: cover;
+  background: var(--control-bg);
+}
+
 .missing-emby-marker {
   color: var(--amber);
   text-shadow: 0 0 5px rgba(255, 176, 0, 0.42);
@@ -1084,6 +1093,44 @@ pre {
 
 .entity-form-field-wide {
   grid-column: 1 / -1;
+}
+
+.avatar-editor {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.avatar-preview-frame {
+  display: grid;
+  width: 108px;
+  height: 144px;
+  place-items: center;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  background: var(--control-bg);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.avatar-preview-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.avatar-editor-actions code {
+  flex: 1 1 260px;
+  min-width: 0;
 }
 
 .entity-form-sections {

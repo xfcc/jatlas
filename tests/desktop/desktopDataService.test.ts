@@ -40,6 +40,7 @@ function actressRow(videoCount: number, assetUpdatedAt: Date) {
     career_from: '',
     career_to: '',
     minnano_url: '',
+    avatar_path: '',
     measurements: '',
     birth_date: '',
     career_period: '',
@@ -60,6 +61,7 @@ function input(videoCount: number): DesktopActressInput {
     status: 'active',
     embyIds: [],
     aliases: [],
+    avatar_path: '',
     minnano_url: '',
     tags: [],
   };

@@ -49,7 +49,9 @@ describe('initializeDatabaseForDesktop', () => {
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"status" = \'active\''));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"career_from"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"asset_updated_at" = "updated_at"'));
-    expect(mockDisconnect).toHaveBeenCalledTimes(6);
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "_jatlas_meta"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining("'schema_version'"));
+    expect(mockDisconnect).toHaveBeenCalledTimes(7);
   });
 
   it('initializes an empty SQLite database without spawning Prisma CLI', async () => {
@@ -66,5 +68,6 @@ describe('initializeDatabaseForDesktop', () => {
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"Actress"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"birthday"'));
     expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('"asset_updated_at" = "updated_at"'));
+    expect(mockExecuteRawUnsafe).toHaveBeenCalledWith(expect.stringContaining('CREATE TABLE IF NOT EXISTS "_jatlas_meta"'));
   });
 });

@@ -1,45 +1,24 @@
 import { PrismaClient } from '@prisma/client';
-import fs from 'fs/promises';
-import path from 'path';
 import type { DesktopRuntimeConfig } from './configService';
+import {
+  ensureDatabaseDirectory,
+  hasExistingDatabase,
+  markDatabaseSchemaCurrent,
+} from './migrationService';
+import type { DatabaseMigrationStatus } from './migrationService';
 
 export type DesktopBootstrapState = {
   configured: boolean;
   initialized: boolean;
   configPath: string;
   message: string;
+  migration?: DatabaseMigrationStatus & { backupPath?: string };
 };
 
 type ColumnDefinition = {
   name: string;
   sql: string;
 };
-
-function sqlitePathFromDatabaseUrl(databaseUrl: string): string {
-  if (!databaseUrl.startsWith('file:')) {
-    throw new Error('Only SQLite file: database URLs are supported.');
-  }
-  return databaseUrl.slice('file:'.length);
-}
-
-async function hasExistingDatabase(databaseUrl: string): Promise<boolean> {
-  const dbPath = sqlitePathFromDatabaseUrl(databaseUrl);
-  try {
-    const stat = await fs.stat(dbPath);
-    return stat.isFile() && stat.size > 0;
-  } catch (e) {
-    const code = e && typeof e === 'object' && 'code' in e ? (e as NodeJS.ErrnoException).code : undefined;
-    if (code === 'ENOENT') {
-      return false;
-    }
-    throw e;
-  }
-}
-
-async function ensureDatabaseDirectory(databaseUrl: string) {
-  const dbPath = sqlitePathFromDatabaseUrl(databaseUrl);
-  await fs.mkdir(path.dirname(dbPath), { recursive: true });
-}
 
 async function getTableColumns(client: PrismaClient, tableName: string): Promise<Set<string>> {
   const rows = await client.$queryRawUnsafe<Array<{ name: string }>>(`PRAGMA table_info("${tableName}")`);
@@ -112,6 +91,7 @@ async function ensureDesktopSchema(databaseUrl: string) {
         "career_from" TEXT NOT NULL DEFAULT '',
         "career_to" TEXT NOT NULL DEFAULT '',
         "minnano_url" TEXT NOT NULL DEFAULT '',
+        "avatar_path" TEXT NOT NULL DEFAULT '',
         "measurements" TEXT NOT NULL DEFAULT '',
         "birth_date" TEXT NOT NULL DEFAULT '',
         "career_period" TEXT NOT NULL DEFAULT '',
@@ -156,6 +136,7 @@ async function ensureDesktopSchema(databaseUrl: string) {
       { name: 'career_from', sql: '"career_from" TEXT NOT NULL DEFAULT \'\'' },
       { name: 'career_to', sql: '"career_to" TEXT NOT NULL DEFAULT \'\'' },
       { name: 'minnano_url', sql: '"minnano_url" TEXT NOT NULL DEFAULT \'\'' },
+      { name: 'avatar_path', sql: '"avatar_path" TEXT NOT NULL DEFAULT \'\'' },
       { name: 'measurements', sql: '"measurements" TEXT NOT NULL DEFAULT \'\'' },
       { name: 'birth_date', sql: '"birth_date" TEXT NOT NULL DEFAULT \'\'' },
       { name: 'career_period', sql: '"career_period" TEXT NOT NULL DEFAULT \'\'' },
@@ -303,4 +284,5 @@ export async function initializeDatabaseForDesktop(config: DesktopRuntimeConfig,
   if (!hadAssetUpdatedAt) {
     await backfillActressAssetUpdatedAt(config.databaseUrl);
   }
+  await markDatabaseSchemaCurrent(config);
 }

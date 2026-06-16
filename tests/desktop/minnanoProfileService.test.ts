@@ -6,6 +6,7 @@ describe('minnano profile service', () => {
       <html>
         <head>
           <link rel="canonical" href="https://www.minnano-av.com/actress832690.html">
+          <meta property="og:image" content="https://www.minnano-av.com/img/actress/832690.jpg">
           <script type="application/ld+json">
             {
               "@context": "https://schema.org",
@@ -43,6 +44,7 @@ describe('minnano profile service', () => {
 
     expect(parseMinnanoActressProfileHtml(html, 'https://example.test')).toEqual({
       sourceUrl: 'https://www.minnano-av.com/actress832690.html',
+      avatarUrl: 'https://www.minnano-av.com/img/actress/832690.jpg',
       matchedName: '奥田咲',
       roman: 'Okuda Saki',
       aliases: ['奥田さき', 'Okuda Alias'],

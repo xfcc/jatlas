@@ -32,6 +32,7 @@ import {
   type RuntimeSettingChange,
   type TierLogEntry,
 } from './activityLogFormatting';
+import { formatActressAge, formatActressCareerDuration } from './actressProfileMetrics';
 import {
   assetHealthLabel,
   getAssetHealthStatus,
@@ -97,6 +98,14 @@ function parseCommaSeparatedValues(value: string) {
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+function localImageSrc(filePath: string) {
+  const trimmed = filePath.trim();
+  if (!trimmed) return '';
+  const normalized = trimmed.replace(/\\/g, '/');
+  const fileUrl = normalized.startsWith('/') ? `file://${normalized}` : `file:///${normalized}`;
+  return encodeURI(fileUrl);
 }
 
 function compactTierStoragePaths(paths: Record<string, string>) {
@@ -472,6 +481,7 @@ export function App() {
   const [careerFromInput, setCareerFromInput] = useState('');
   const [careerToInput, setCareerToInput] = useState('');
   const [minnanoUrlInput, setMinnanoUrlInput] = useState('');
+  const [avatarPathInput, setAvatarPathInput] = useState('');
   const [profileTagsInput, setProfileTagsInput] = useState('');
   const [minnanoFetching, setMinnanoFetching] = useState(false);
 
@@ -553,6 +563,17 @@ export function App() {
     setTierId((id) => (tiers.some((t) => t.id === id) ? id : first));
   }, [tiers]);
 
+  const applyRuntimeConfigState = (config: DesktopRuntimeConfig) => {
+    setDatabaseUrl(config.databaseUrl);
+    setSelectedDatabasePath(databasePathFromUrl(config.databaseUrl));
+    setEmbyServerUrl(config.embyServerUrl ?? '');
+    setEmbyApiKey(config.embyApiKey ?? '');
+    setThemeMode(normalizeDesktopThemeMode(config.themeMode));
+    setStorageRootPath(config.storageRootPath ?? '');
+    setTierStoragePaths(config.tierStoragePaths ?? {});
+    setRuntimeConfigBaseline(config);
+  };
+
   useEffect(() => {
     void (async () => {
       const state = await window.desktopApi.getBootstrapState();
@@ -574,14 +595,7 @@ export function App() {
         setAuthenticated(auth.authenticated);
         const config = await window.desktopApi.getRuntimeConfig();
         if (config) {
-          setDatabaseUrl(config.databaseUrl);
-          setSelectedDatabasePath(databasePathFromUrl(config.databaseUrl));
-          setEmbyServerUrl(config.embyServerUrl ?? '');
-          setEmbyApiKey(config.embyApiKey ?? '');
-          setThemeMode(normalizeDesktopThemeMode(config.themeMode));
-          setStorageRootPath(config.storageRootPath ?? '');
-          setTierStoragePaths(config.tierStoragePaths ?? {});
-          setRuntimeConfigBaseline(config);
+          applyRuntimeConfigState(config);
         }
       }
     })();
@@ -828,6 +842,12 @@ export function App() {
       const result = await window.desktopApi.saveConfigAndInit(config);
       setBootstrap(result);
       setAuthenticated(result.initialized);
+      if (result.initialized) {
+        const saved = await window.desktopApi.getRuntimeConfig();
+        if (saved) {
+          applyRuntimeConfigState(saved);
+        }
+      }
       const bootstrapFailure = getBootstrapFailureMessage(result);
       if (bootstrapFailure) {
         setError(bootstrapFailure);
@@ -851,6 +871,39 @@ export function App() {
     await initializeWithDatabaseUrl(nextUrl);
   };
 
+  const onConfirmDatabaseMigration = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await window.desktopApi.confirmDatabaseMigration();
+      setBootstrap(result);
+      setAuthenticated(result.initialized);
+      if (result.initialized) {
+        const saved = await window.desktopApi.getRuntimeConfig();
+        if (saved) {
+          applyRuntimeConfigState(saved);
+        }
+      } else {
+        setError(result.message);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '数据库升级失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onCancelDatabaseMigration = () => {
+    setAuthenticated(false);
+    setBootstrap({
+      configured: false,
+      initialized: false,
+      configPath: bootstrap?.configPath ?? '',
+      message: '已暂不升级数据库。',
+    });
+    setError(null);
+  };
+
   const onSelectDatabaseFile = async () => {
     setError(null);
     const result = await window.desktopApi.selectDatabaseFile();
@@ -864,6 +917,22 @@ export function App() {
     const result = await window.desktopApi.selectStorageFolder();
     if (result.canceled) return;
     setStoragePathInput(result.folderPath);
+  };
+
+  const onSelectAvatarFile = async () => {
+    const actorName = name.trim();
+    if (!actorName) {
+      setError('请先填写演员名称。');
+      return;
+    }
+    setError(null);
+    try {
+      const result = await window.desktopApi.selectAvatarFile(actorName);
+      if (result.canceled) return;
+      setAvatarPathInput(result.avatarPath);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '选择头像失败');
+    }
   };
 
   const onSaveRuntimeSettings = async () => {
@@ -1133,6 +1202,7 @@ export function App() {
     setCareerFromInput('');
     setCareerToInput('');
     setMinnanoUrlInput('');
+    setAvatarPathInput('');
     setProfileTagsInput('');
     setMinnanoFetching(false);
     if (tiers.length > 0) {
@@ -1186,6 +1256,7 @@ export function App() {
       applyText('出演结束', profile.career_to, setCareerToInput);
       applyList('标签', profile.tags, setProfileTagsInput);
       applyText('Minnano 来源地址', profile.sourceUrl, setMinnanoUrlInput);
+      applyText('头像', profile.avatarPath ?? '', setAvatarPathInput);
 
       const summary =
         fieldChanges.length > 0
@@ -1224,6 +1295,7 @@ export function App() {
       career_from: careerFromInput,
       career_to: careerToInput,
       minnano_url: minnanoUrlInput,
+      avatar_path: avatarPathInput,
       tags: parseCommaSeparatedValues(profileTagsInput),
     };
     const tierNameForInput = tiers.find((t) => t.id === input.tierId)?.name ?? `分类 #${input.tierId}`;
@@ -1248,6 +1320,7 @@ export function App() {
       career_from: input.career_from ?? '',
       career_to: input.career_to ?? '',
       minnano_url: input.minnano_url ?? '',
+      avatar_path: input.avatar_path ?? '',
       tags: input.tags ?? [],
       updated_at:
         previousRow && previousRow.video_count === input.video_count
@@ -1339,6 +1412,7 @@ export function App() {
     setCareerFromInput(row.career_from);
     setCareerToInput(row.career_to);
     setMinnanoUrlInput(row.minnano_url);
+    setAvatarPathInput(row.avatar_path);
     setProfileTagsInput(row.tags.join(', '));
   };
 
@@ -1475,6 +1549,47 @@ export function App() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [isLogPaneOpen, terminalLineSignal, terminalLines.length]);
+
+  if (bootstrap?.migration?.required) {
+    const migration = bootstrap.migration;
+    return (
+      <main className="app-shell setup-shell desktop-surface" style={{ padding: 24, maxWidth: 960 }}>
+        <h1 style={{ marginTop: 0 }}>需要升级数据库</h1>
+        <p>检测到这是旧版本数据库。JATLAS 需要先升级数据库结构，才能继续使用。</p>
+        <p>升级前会自动创建一份备份，确认后才会修改当前数据库文件。</p>
+
+        <div className="setup-choice-grid">
+          <section className="setup-choice-card is-primary">
+            <span className="setup-choice-kicker">Database Upgrade</span>
+            <h2>备份并升级</h2>
+            <p>当前数据库版本：v0.{migration.currentVersion}</p>
+            <p>需要升级到：v0.{migration.targetVersion}</p>
+            <p>备份位置：与当前数据库同目录</p>
+            <code>{migration.databasePath}</code>
+            <button type="button" onClick={() => void onConfirmDatabaseMigration()} disabled={saving}>
+              {saving ? '正在升级...' : '备份并升级数据库'}
+            </button>
+          </section>
+
+          <section className="setup-choice-card">
+            <span className="setup-choice-kicker">Upgrade Steps</span>
+            <h2>升级内容</h2>
+            <p>升级完成后会自动进入主界面。</p>
+            <ul>
+              {migration.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ul>
+            {migration.backupPath ? <code>{migration.backupPath}</code> : null}
+            <button type="button" onClick={onCancelDatabaseMigration} disabled={saving} style={{ padding: '8px 12px' }}>
+              暂不升级
+            </button>
+          </section>
+          {error ? <p style={{ color: 'var(--red)' }}>{error}</p> : null}
+        </div>
+      </main>
+    );
+  }
 
   if (!bootstrap || !bootstrap.configured || !bootstrap.initialized) {
     return (
@@ -1735,6 +1850,8 @@ export function App() {
                       罩杯 {sortIndicator(tierActressSortKey === 'cup', tierActressSortDirection)}
                     </button>
                   </th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>年龄</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>从业时长</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>资产状态</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>
                     <button type="button" className="table-sort-button" onClick={() => onSortTierActresses('updated_at')}>
@@ -1752,6 +1869,9 @@ export function App() {
                     <tr key={row.id}>
                       <td style={{ padding: 8, borderTop: '1px solid var(--line-soft)' }}>
                         <span className="actress-name-cell">
+                          {row.avatar_path ? (
+                            <img className="actress-avatar-thumb" src={localImageSrc(row.avatar_path)} alt="" />
+                          ) : null}
                           {row.name}
                           {missingEmbyId ? (
                             <span className="missing-emby-marker" title="未绑定 Emby ID" aria-label="未绑定 Emby ID">
@@ -1762,6 +1882,10 @@ export function App() {
                       </td>
                       <td style={{ padding: 8, borderTop: '1px solid var(--line-soft)' }}>{row.video_count}</td>
                       <td style={{ padding: 8, borderTop: '1px solid var(--line-soft)' }}>{row.cup || '-'}</td>
+                      <td style={{ padding: 8, borderTop: '1px solid var(--line-soft)' }}>{formatActressAge(row.birthday)}</td>
+                      <td style={{ padding: 8, borderTop: '1px solid var(--line-soft)' }}>
+                        {formatActressCareerDuration(row.career_from)}
+                      </td>
                       <td style={{ padding: 8, borderTop: '1px solid var(--line-soft)' }}>
                         <span className={`asset-health-badge is-${health}`}>{assetHealthLabel(health)}</span>
                       </td>
@@ -1786,7 +1910,7 @@ export function App() {
                 })}
                 {activeTierActresses.length === 0 ? (
                   <tr>
-                    <td style={{ padding: 10 }} colSpan={6}>
+                    <td style={{ padding: 10 }} colSpan={8}>
                       当前分类下没有演员。
                     </td>
                   </tr>
@@ -1859,6 +1983,20 @@ export function App() {
             <section className="entity-form-section">
               <h3>数据源</h3>
               <div className="entity-form-grid">
+                <div className="entity-form-field-wide avatar-editor">
+                  <div className="avatar-preview-frame">
+                    {avatarPathInput ? <img src={localImageSrc(avatarPathInput)} alt={`${name || '演员'}头像`} /> : <span>无头像</span>}
+                  </div>
+                  <div className="avatar-editor-actions">
+                    <button type="button" onClick={() => void onSelectAvatarFile()} disabled={!name.trim()}>
+                      选择头像
+                    </button>
+                    <button type="button" onClick={() => setAvatarPathInput('')} disabled={!avatarPathInput.trim()}>
+                      移除头像
+                    </button>
+                    {avatarPathInput ? <code>{avatarPathInput}</code> : null}
+                  </div>
+                </div>
                 <label className="entity-form-field-wide">
                   Minnano 网页地址 / Minnano URL
                   <input

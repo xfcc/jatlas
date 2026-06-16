@@ -1,5 +1,7 @@
 export type MinnanoActressProfile = {
   sourceUrl: string;
+  avatarUrl: string;
+  avatarPath?: string;
   matchedName: string;
   roman: string;
   aliases: string[];
@@ -104,6 +106,30 @@ function parseJsonLd(html: string): Partial<MinnanoActressProfile> {
   }
 }
 
+function normalizeMinnanoAssetUrl(value: string) {
+  const raw = decodeHtml(value).trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw, MINNANO_BASE_URL).toString();
+  } catch {
+    return '';
+  }
+}
+
+function parseAvatarUrl(html: string) {
+  const ogImage = firstMatch(html, /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+  if (ogImage) return normalizeMinnanoAssetUrl(ogImage);
+
+  const actProfileImage = firstMatch(
+    html,
+    /<div[^>]+class=["'][^"']*act-profile[^"']*["'][\s\S]*?<img[^>]+src=["']([^"']+)["']/i,
+  );
+  if (actProfileImage) return normalizeMinnanoAssetUrl(actProfileImage);
+
+  const firstActressImage = firstMatch(html, /<img[^>]+src=["']([^"']*(?:actress|photo|profile)[^"']*)["']/i);
+  return normalizeMinnanoAssetUrl(firstActressImage);
+}
+
 function parseTitleNames(html: string) {
   const matchedName = cleanText(firstMatch(html, /<h1>\s*([^<]+?)\s*<span>/i));
   const subtitle = cleanText(firstMatch(html, /<h1>[\s\S]*?<span>([\s\S]*?)<\/span>/i));
@@ -173,6 +199,7 @@ export function parseMinnanoActressProfileHtml(html: string, fallbackUrl: string
 
   const profile = {
     sourceUrl: jsonLd.sourceUrl || canonical || fallbackUrl,
+    avatarUrl: parseAvatarUrl(html),
     matchedName: titleNames.matchedName || jsonLd.matchedName || '',
     roman: titleNames.roman || jsonLd.roman || '',
     aliases: parseAliases(html),

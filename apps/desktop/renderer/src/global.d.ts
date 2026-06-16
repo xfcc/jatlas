@@ -20,6 +20,7 @@ declare global {
       getBootstrapState: () => Promise<DesktopBootstrapState>;
       getDefaultDatabaseFile: () => Promise<{ filePath: string; databaseUrl: string }>;
       saveConfigAndInit: (config: DesktopRuntimeConfig) => Promise<DesktopBootstrapState>;
+      confirmDatabaseMigration: () => Promise<DesktopBootstrapState>;
       getRuntimeConfig: () => Promise<DesktopRuntimeConfig | null>;
       saveRuntimeConfig: (config: DesktopRuntimeConfig) => Promise<DesktopRuntimeConfig>;
       getAuthState: () => Promise<{ authenticated: boolean }>;
@@ -31,6 +32,7 @@ declare global {
       updateActress: (id: number, input: DesktopActressInput) => Promise<DesktopActress>;
       deleteActress: (id: number) => Promise<{ success: true }>;
       fetchMinnanoProfile: (name: string, sourceUrl?: string) => Promise<MinnanoActressProfile>;
+      selectAvatarFile: (actressName: string) => Promise<{ canceled: true } | { canceled: false; avatarPath: string }>;
       createTier: (input: DesktopTierInput) => Promise<DesktopTier>;
       updateTier: (id: number, input: Partial<DesktopTierInput>) => Promise<DesktopTier>;
       deleteTier: (id: number) => Promise<{ success: true }>;

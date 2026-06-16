@@ -6,6 +6,7 @@ const IPC_CHANNELS = {
   GET_BOOTSTRAP_STATE: 'desktop:get-bootstrap-state',
   GET_DEFAULT_DATABASE_FILE: 'desktop:get-default-database-file',
   SAVE_CONFIG_AND_INIT: 'desktop:save-config-and-init',
+  CONFIRM_DATABASE_MIGRATION: 'desktop:confirm-database-migration',
   GET_RUNTIME_CONFIG: 'desktop:get-runtime-config',
   SAVE_RUNTIME_CONFIG: 'desktop:save-runtime-config',
   GET_AUTH_STATE: 'desktop:get-auth-state',
@@ -17,6 +18,7 @@ const IPC_CHANNELS = {
   UPDATE_ACTRESS: 'desktop:update-actress',
   DELETE_ACTRESS: 'desktop:delete-actress',
   FETCH_MINNANO_PROFILE: 'desktop:fetch-minnano-profile',
+  SELECT_AVATAR_FILE: 'desktop:select-avatar-file',
   CREATE_TIER: 'desktop:create-tier',
   UPDATE_TIER: 'desktop:update-tier',
   DELETE_TIER: 'desktop:delete-tier',
@@ -42,6 +44,7 @@ type DesktopApi = {
   saveConfigAndInit: (
     config: IpcInvokeMap[typeof IPC_CHANNELS.SAVE_CONFIG_AND_INIT]['args'][0],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SAVE_CONFIG_AND_INIT]['result']>;
+  confirmDatabaseMigration: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.CONFIRM_DATABASE_MIGRATION]['result']>;
   getRuntimeConfig: () => Promise<IpcInvokeMap[typeof IPC_CHANNELS.GET_RUNTIME_CONFIG]['result']>;
   saveRuntimeConfig: (
     config: IpcInvokeMap[typeof IPC_CHANNELS.SAVE_RUNTIME_CONFIG]['args'][0],
@@ -69,6 +72,9 @@ type DesktopApi = {
     name: IpcInvokeMap[typeof IPC_CHANNELS.FETCH_MINNANO_PROFILE]['args'][0],
     sourceUrl?: IpcInvokeMap[typeof IPC_CHANNELS.FETCH_MINNANO_PROFILE]['args'][1],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.FETCH_MINNANO_PROFILE]['result']>;
+  selectAvatarFile: (
+    actressName: IpcInvokeMap[typeof IPC_CHANNELS.SELECT_AVATAR_FILE]['args'][0],
+  ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.SELECT_AVATAR_FILE]['result']>;
   createTier: (
     input: IpcInvokeMap[typeof IPC_CHANNELS.CREATE_TIER]['args'][0],
   ) => Promise<IpcInvokeMap[typeof IPC_CHANNELS.CREATE_TIER]['result']>;
@@ -118,6 +124,7 @@ const desktopApi: DesktopApi = {
   getBootstrapState: () => ipcRenderer.invoke(IPC_CHANNELS.GET_BOOTSTRAP_STATE),
   getDefaultDatabaseFile: () => ipcRenderer.invoke(IPC_CHANNELS.GET_DEFAULT_DATABASE_FILE),
   saveConfigAndInit: (config) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_CONFIG_AND_INIT, config),
+  confirmDatabaseMigration: () => ipcRenderer.invoke(IPC_CHANNELS.CONFIRM_DATABASE_MIGRATION),
   getRuntimeConfig: () => ipcRenderer.invoke(IPC_CHANNELS.GET_RUNTIME_CONFIG),
   saveRuntimeConfig: (config) => ipcRenderer.invoke(IPC_CHANNELS.SAVE_RUNTIME_CONFIG, config),
   getAuthState: () => ipcRenderer.invoke(IPC_CHANNELS.GET_AUTH_STATE),
@@ -129,6 +136,7 @@ const desktopApi: DesktopApi = {
   updateActress: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_ACTRESS, id, input),
   deleteActress: (id) => ipcRenderer.invoke(IPC_CHANNELS.DELETE_ACTRESS, id),
   fetchMinnanoProfile: (name, sourceUrl) => ipcRenderer.invoke(IPC_CHANNELS.FETCH_MINNANO_PROFILE, name, sourceUrl),
+  selectAvatarFile: (actressName) => ipcRenderer.invoke(IPC_CHANNELS.SELECT_AVATAR_FILE, actressName),
   createTier: (input) => ipcRenderer.invoke(IPC_CHANNELS.CREATE_TIER, input),
   updateTier: (id, input) => ipcRenderer.invoke(IPC_CHANNELS.UPDATE_TIER, id, input),
   deleteTier: (id) => ipcRenderer.invoke(IPC_CHANNELS.DELETE_TIER, id),

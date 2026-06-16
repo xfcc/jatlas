@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   GET_BOOTSTRAP_STATE: 'desktop:get-bootstrap-state',
   GET_DEFAULT_DATABASE_FILE: 'desktop:get-default-database-file',
   SAVE_CONFIG_AND_INIT: 'desktop:save-config-and-init',
+  CONFIRM_DATABASE_MIGRATION: 'desktop:confirm-database-migration',
   GET_RUNTIME_CONFIG: 'desktop:get-runtime-config',
   SAVE_RUNTIME_CONFIG: 'desktop:save-runtime-config',
   GET_AUTH_STATE: 'desktop:get-auth-state',
@@ -29,6 +30,7 @@ export const IPC_CHANNELS = {
   UPDATE_ACTRESS: 'desktop:update-actress',
   DELETE_ACTRESS: 'desktop:delete-actress',
   FETCH_MINNANO_PROFILE: 'desktop:fetch-minnano-profile',
+  SELECT_AVATAR_FILE: 'desktop:select-avatar-file',
   CREATE_TIER: 'desktop:create-tier',
   UPDATE_TIER: 'desktop:update-tier',
   DELETE_TIER: 'desktop:delete-tier',
@@ -62,6 +64,10 @@ export type IpcInvokeMap = {
   };
   [IPC_CHANNELS.SAVE_CONFIG_AND_INIT]: {
     args: [DesktopRuntimeConfig];
+    result: DesktopBootstrapState;
+  };
+  [IPC_CHANNELS.CONFIRM_DATABASE_MIGRATION]: {
+    args: [];
     result: DesktopBootstrapState;
   };
   [IPC_CHANNELS.GET_RUNTIME_CONFIG]: {
@@ -107,6 +113,10 @@ export type IpcInvokeMap = {
   [IPC_CHANNELS.FETCH_MINNANO_PROFILE]: {
     args: [string, string?];
     result: MinnanoActressProfile;
+  };
+  [IPC_CHANNELS.SELECT_AVATAR_FILE]: {
+    args: [string];
+    result: { canceled: true } | { canceled: false; avatarPath: string };
   };
   [IPC_CHANNELS.CREATE_TIER]: {
     args: [DesktopTierInput];

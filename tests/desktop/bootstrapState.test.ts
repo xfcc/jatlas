@@ -22,4 +22,23 @@ describe('getBootstrapFailureMessage', () => {
       }),
     ).toBe('');
   });
+
+  it('does not show migration-required bootstrap state as a generic failure', () => {
+    expect(
+      getBootstrapFailureMessage({
+        configured: true,
+        initialized: false,
+        configPath: '/tmp/desktop-config.json',
+        message: '检测到旧版本数据库，需要先升级数据库。',
+        migration: {
+          required: true,
+          currentVersion: 0,
+          targetVersion: 7,
+          databasePath: '/tmp/jatlas.db',
+          backupDirectory: '/tmp',
+          steps: ['备份当前数据库文件'],
+        },
+      }),
+    ).toBe('');
+  });
 });
