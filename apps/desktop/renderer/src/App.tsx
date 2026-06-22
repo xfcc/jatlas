@@ -16,6 +16,7 @@ import {
   formatActressUpdatedSummaryText,
   formatEmbyIdSyncSummaryText,
   formatRuntimeSettingsSummaryText,
+  formatStorageScanSummaryText,
   formatStorageImportSummaryText,
   formatTierCreatedSummaryText,
   formatTierDeletedSummaryText,
@@ -25,6 +26,7 @@ import {
   getActressDeletedSnapshot,
   getActressUpdateChanges,
   getRuntimeSettingsChanges,
+  getStorageScanLogEntries,
   getTierCreatedSnapshot,
   getTierDeletedSnapshot,
   getTierUpdateChanges,
@@ -42,7 +44,8 @@ import {
 } from './assetHealth';
 import { getBootstrapFailureMessage } from './bootstrapState';
 import { clampFunctionPaneWidth, defaultFunctionPaneWidth } from './splitPaneState';
-import { terminalProgressBar, type TerminalStatusTone } from './terminalDesign';
+import { terminalProgressBar } from './terminalDesign';
+import { formatActivityTerminalLines, type ActivitySnapshot } from './activityTerminalFormatting';
 import {
   desktopThemeAttribute,
   desktopThemeOptions,
@@ -56,27 +59,6 @@ type EditorView =
   | { kind: 'tier'; id: number | null }
   | { kind: 'tier-detail'; id: number }
   | null;
-
-type ActivitySnapshot = {
-  activityId: string;
-  kind?: TaskState['kind'];
-  title: string;
-  scope?: string;
-  status: string;
-  progress: number;
-  total: number;
-  summaryText?: string;
-  events: TaskActivityEvent[];
-  startedAt?: string;
-  finishedAt?: string;
-};
-
-type ActivityTerminalLine = {
-  id: string;
-  kind: 'command' | 'status' | 'summary' | 'event';
-  tone?: TerminalStatusTone;
-  text: string;
-};
 
 const initialDatabaseUrl = 'file:./jatlas-desktop.db';
 
@@ -121,23 +103,6 @@ function isTaskTerminal(t: TaskState) {
   return t.status.startsWith('completed') || t.status.startsWith('error:') || t.status === 'error:tier_not_found';
 }
 
-function activityStatusText(activity: ActivitySnapshot) {
-  if (activity.status === 'processing') return '执行中';
-  if (activity.status === 'starting') return '准备中';
-  if (activity.status === 'completed') return activity.events.some((event) => event.result === 'error') ? '存在失败' : '已完成';
-  if (activity.status === 'completed:cancelled') return '已取消';
-  if (activity.status.startsWith('error:')) return '失败';
-  return activity.status;
-}
-
-function activityStatusTone(activity: ActivitySnapshot): TerminalStatusTone {
-  if (activity.status === 'processing' || activity.status === 'starting') return 'running';
-  if (activity.status.startsWith('error:')) return 'error';
-  if (activity.status === 'completed' && activity.events.some((event) => event.result === 'error')) return 'error';
-  if (activity.status === 'completed' || activity.status === 'completed:cancelled') return 'ok';
-  return 'muted';
-}
-
 function normalizeTaskEvent(event: NonNullable<TaskState['events']>[number], fallbackIndex: number): TaskActivityEvent {
   return {
     id: event.id ?? `${event.action ?? 'event'}-${fallbackIndex}`,
@@ -157,15 +122,6 @@ function normalizeTaskEvent(event: NonNullable<TaskState['events']>[number], fal
     detail: event.detail,
     retryable: event.retryable,
   };
-}
-
-function formatNumberValue(value: number | string | null | undefined) {
-  return value === null || value === undefined || value === '' ? '-' : String(value);
-}
-
-function formatDelta(delta: number | null | undefined) {
-  if (delta === null || delta === undefined) return '';
-  return delta > 0 ? `+${delta}` : String(delta);
 }
 
 function formatDisplayDateTime(value: string) {
@@ -215,53 +171,6 @@ function taskToActivitySnapshot(task: TaskState, fallbackId: string): ActivitySn
   };
 }
 
-function formatActivityTime(value?: string) {
-  if (!value) return new Date().toLocaleTimeString('zh-CN', { hour12: false });
-  return new Date(value).toLocaleTimeString('zh-CN', { hour12: false });
-}
-
-function formatTerminalEventLine(event: TaskActivityEvent): ActivityTerminalLine {
-  const status = event.result.toUpperCase();
-  const index = String(event.index).padStart(3, '0');
-  const change =
-    event.before !== undefined || event.after !== undefined
-      ? ` ${formatNumberValue(event.before)} -> ${formatNumberValue(event.after)}`
-      : '';
-  const delta = event.delta !== undefined && event.delta !== null ? ` ${formatDelta(event.delta)}` : '';
-  return {
-    id: event.id,
-    kind: 'event',
-    tone: event.result === 'error' ? 'error' : event.result === 'skipped' ? 'muted' : 'ok',
-    text: `[${index}] ${status} ${event.subjectName} :: ${event.action}${change}${delta} :: ${event.detail}`,
-  };
-}
-
-function formatActivityTerminalLines(activity: ActivitySnapshot): ActivityTerminalLine[] {
-  const tone = activityStatusTone(activity);
-  const lines = [
-    {
-      id: `${activity.activityId}-command`,
-      kind: 'command' as const,
-      text: `${formatActivityTime(activity.startedAt)} $ ${activity.title}${activity.scope ? ` -- ${activity.scope}` : ''}`,
-    },
-    {
-      id: `${activity.activityId}-status`,
-      kind: 'status' as const,
-      tone,
-      text: `${formatActivityTime(activity.finishedAt ?? activity.startedAt)} [${tone.toUpperCase()}] ${activityStatusText(activity)} ${activity.progress}/${activity.total}`,
-    },
-  ];
-  if (activity.summaryText) {
-    lines.push({
-      id: `${activity.activityId}-summary`,
-      kind: 'summary',
-      text: `# ${activity.summaryText}`,
-    });
-  }
-  lines.push(...activity.events.map((event) => formatTerminalEventLine(event)));
-  return lines;
-}
-
 function createSimpleActivity(
   title: string,
   detail: string,
@@ -287,6 +196,32 @@ function createSimpleActivity(
     total: 1,
     summaryText: detail,
     events: [event],
+    startedAt: timestamp,
+    finishedAt: timestamp,
+  };
+}
+
+function createStorageScanActivity(folders: string[], resolvedPath: string, scope?: string): ActivitySnapshot {
+  const timestamp = new Date().toISOString();
+  const entries = getStorageScanLogEntries(folders, resolvedPath);
+  const events: TaskActivityEvent[] = entries.map((entry, index) => ({
+    id: `storage-scan-${timestamp}-${index + 1}`,
+    index: index + 1,
+    timestamp,
+    subjectName: entry.label,
+    action: '扫描结果',
+    result: folders.length === 0 && entry.label === '扫描结果' ? 'skipped' : 'success',
+    detail: entry.detail,
+  }));
+  return {
+    activityId: `storage-scan-${timestamp}`,
+    title: '扫描存储地址',
+    scope,
+    status: 'completed',
+    progress: folders.length,
+    total: folders.length,
+    summaryText: formatStorageScanSummaryText(folders.length),
+    events,
     startedAt: timestamp,
     finishedAt: timestamp,
   };
@@ -798,14 +733,7 @@ export function App() {
       const result = await window.desktopApi.scanStorage(id, storagePathInput);
       setStorageResolved(result.resolvedPath);
       setStorageFolders(result.folders);
-      appendActivity(
-        createSimpleActivity(
-          '扫描存储地址',
-          `扫描到 ${result.folders.length} 个一级文件夹。`,
-          'success',
-          activeTierDetail ? `${activeTierDetail.name} 分类` : undefined,
-        ),
-      );
+      appendActivity(createStorageScanActivity(result.folders, result.resolvedPath, activeTierDetail ? `${activeTierDetail.name} 分类` : undefined));
     } catch (e) {
       setError(e instanceof Error ? e.message : '扫描失败');
       appendActivity(createSimpleActivity('扫描存储地址', e instanceof Error ? e.message : '扫描失败', 'error'));
@@ -1811,16 +1739,6 @@ export function App() {
               {tierDetailMessage ? <span style={{ color: 'var(--emerald)' }}>{tierDetailMessage}</span> : null}
             </div>
           </div>
-          {storageFolders && storageFolders.length > 0 ? (
-            <ul style={{ marginTop: 8, maxHeight: 240, overflow: 'auto', paddingLeft: 20 }}>
-              {storageFolders.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          ) : storageFolders && storageFolders.length === 0 ? (
-            <p style={{ marginTop: 8, color: 'var(--muted)' }}>没有找到一级子文件夹，或该路径不是目录。</p>
-          ) : null}
-
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 10 }}>
             <h3 style={{ margin: 0 }}>当前分类演员</h3>
             <button type="button" onClick={() => onCreateActress(activeTierDetail.id)}>
@@ -1850,8 +1768,16 @@ export function App() {
                       罩杯 {sortIndicator(tierActressSortKey === 'cup', tierActressSortDirection)}
                     </button>
                   </th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>年龄</th>
-                  <th style={{ textAlign: 'left', padding: 8 }}>从业时长</th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>
+                    <button type="button" className="table-sort-button" onClick={() => onSortTierActresses('age')}>
+                      年龄 {sortIndicator(tierActressSortKey === 'age', tierActressSortDirection)}
+                    </button>
+                  </th>
+                  <th style={{ textAlign: 'left', padding: 8 }}>
+                    <button type="button" className="table-sort-button" onClick={() => onSortTierActresses('career_duration')}>
+                      从业时长 {sortIndicator(tierActressSortKey === 'career_duration', tierActressSortDirection)}
+                    </button>
+                  </th>
                   <th style={{ textAlign: 'left', padding: 8 }}>资产状态</th>
                   <th style={{ textAlign: 'left', padding: 8 }}>
                     <button type="button" className="table-sort-button" onClick={() => onSortTierActresses('updated_at')}>

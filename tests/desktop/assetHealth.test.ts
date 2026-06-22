@@ -16,12 +16,12 @@ function actress(input: Partial<DesktopActress> & Pick<DesktopActress, 'name'>):
     embyIds: [],
     roman: '',
     aliases: [],
-    birthday: '',
     cup: input.cup ?? '',
     bust: '',
     waist: '',
     hip: '',
-    career_from: '',
+    birthday: input.birthday ?? '',
+    career_from: input.career_from ?? '',
     career_to: '',
     minnano_url: '',
     avatar_path: '',
@@ -58,5 +58,27 @@ describe('asset health helpers', () => {
 
     expect(sortActresses(rows, 'cup', 'asc').map((row) => row.name)).toEqual(['A Cup', 'H Cup', 'No Cup']);
     expect(sortActresses(rows, 'cup', 'desc').map((row) => row.name)).toEqual(['H Cup', 'A Cup', 'No Cup']);
+  });
+
+  it('sorts actresses by age and keeps unknown birthdays last', () => {
+    const rows = [
+      actress({ name: 'Unknown', birthday: '' }),
+      actress({ name: 'Older', birthday: '1994年08月16日' }),
+      actress({ name: 'Younger', birthday: '2001' }),
+    ];
+
+    expect(sortActresses(rows, 'age', 'desc').map((row) => row.name)).toEqual(['Older', 'Younger', 'Unknown']);
+    expect(sortActresses(rows, 'age', 'asc').map((row) => row.name)).toEqual(['Younger', 'Older', 'Unknown']);
+  });
+
+  it('sorts actresses by career duration and keeps unknown debut years last', () => {
+    const rows = [
+      actress({ name: 'Unknown', career_from: '' }),
+      actress({ name: 'Senior', career_from: '2016年' }),
+      actress({ name: 'Newer', career_from: '2023' }),
+    ];
+
+    expect(sortActresses(rows, 'career_duration', 'desc').map((row) => row.name)).toEqual(['Senior', 'Newer', 'Unknown']);
+    expect(sortActresses(rows, 'career_duration', 'asc').map((row) => row.name)).toEqual(['Newer', 'Senior', 'Unknown']);
   });
 });

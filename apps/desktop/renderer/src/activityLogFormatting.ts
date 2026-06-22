@@ -17,6 +17,25 @@ export type TierLogEntry = {
   detail: string;
 };
 
+export type StorageScanLogEntry = {
+  label: string;
+  detail: string;
+};
+
+export function formatStorageScanSummaryText(folderCount: number) {
+  if (folderCount === 0) return '没有找到一级子文件夹，或该路径不是目录。';
+  return `扫描到 ${folderCount} 个一级文件夹。`;
+}
+
+export function getStorageScanLogEntries(folders: string[], resolvedPath: string): StorageScanLogEntry[] {
+  const entries: StorageScanLogEntry[] = [{ label: '实际路径', detail: resolvedPath }];
+  if (folders.length === 0) {
+    entries.push({ label: '扫描结果', detail: formatStorageScanSummaryText(0) });
+    return entries;
+  }
+  return entries.concat(folders.map((folder) => ({ label: folder, detail: '一级子文件夹' })));
+}
+
 export function formatStorageImportSummaryText(summary: TaskSummary, fallbackTotal: number) {
   const scanned = summary.scannedFolders ?? summary.total ?? fallbackTotal;
   const validNames = summary.validNames ?? scanned;

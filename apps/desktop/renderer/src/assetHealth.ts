@@ -1,7 +1,8 @@
 import type { DesktopActress } from '../../core/desktopDataService';
+import { parseProfileYear } from './actressProfileMetrics';
 
 export type AssetHealthStatus = 'healthy' | 'warning' | 'overloaded';
-export type ActressSortKey = 'video_count' | 'cup' | 'updated_at';
+export type ActressSortKey = 'video_count' | 'cup' | 'age' | 'career_duration' | 'updated_at';
 export type SortDirection = 'asc' | 'desc';
 
 export function getAssetHealthStatus(videoCount: number, videoLimit: number | null): AssetHealthStatus {
@@ -32,6 +33,16 @@ function sortableCup(value: string) {
   return match[0].split('').reduce((rank, char) => rank * 26 + (char.charCodeAt(0) - 64), 0);
 }
 
+function sortableAge(birthday: string) {
+  const year = parseProfileYear(birthday);
+  return year === null ? Number.POSITIVE_INFINITY : -year;
+}
+
+function sortableCareerDuration(careerFrom: string) {
+  const year = parseProfileYear(careerFrom);
+  return year === null ? Number.POSITIVE_INFINITY : -year;
+}
+
 export function sortActresses(
   rows: DesktopActress[],
   sortKey: ActressSortKey,
@@ -53,6 +64,30 @@ export function sortActresses(
         return -1;
       } else {
         result = aCup - bCup;
+      }
+    } else if (sortKey === 'age') {
+      const aAge = sortableAge(a.birthday);
+      const bAge = sortableAge(b.birthday);
+      if (!Number.isFinite(aAge) && !Number.isFinite(bAge)) {
+        result = 0;
+      } else if (!Number.isFinite(aAge)) {
+        return 1;
+      } else if (!Number.isFinite(bAge)) {
+        return -1;
+      } else {
+        result = aAge - bAge;
+      }
+    } else if (sortKey === 'career_duration') {
+      const aCareer = sortableCareerDuration(a.career_from);
+      const bCareer = sortableCareerDuration(b.career_from);
+      if (!Number.isFinite(aCareer) && !Number.isFinite(bCareer)) {
+        result = 0;
+      } else if (!Number.isFinite(aCareer)) {
+        return 1;
+      } else if (!Number.isFinite(bCareer)) {
+        return -1;
+      } else {
+        result = aCareer - bCareer;
       }
     } else {
       result = sortableTime(a.updated_at) - sortableTime(b.updated_at);

@@ -4,6 +4,7 @@ import {
   formatActressUpdatedSummaryText,
   formatEmbyIdSyncSummaryText,
   formatRuntimeSettingsSummaryText,
+  formatStorageScanSummaryText,
   formatStorageImportSummaryText,
   formatTierCreatedSummaryText,
   formatTierDeletedSummaryText,
@@ -14,6 +15,7 @@ import {
   getActressUpdateChanges,
   getEmbyIdSyncEventGroups,
   getRuntimeSettingsChanges,
+  getStorageScanLogEntries,
   getTierCreatedSnapshot,
   getTierDeletedSnapshot,
   getTierUpdateChanges,
@@ -21,6 +23,21 @@ import {
 } from '../../apps/desktop/renderer/src/activityLogFormatting';
 
 describe('activity log formatting', () => {
+  it('formats storage scan summaries and folder entries for terminal log output', () => {
+    expect(formatStorageScanSummaryText(2)).toBe('扫描到 2 个一级文件夹。');
+    expect(formatStorageScanSummaryText(0)).toBe('没有找到一级子文件夹，或该路径不是目录。');
+
+    expect(getStorageScanLogEntries(['三上悠亚', '奥田咲'], '/Volumes/JAV/S')).toEqual([
+      { label: '实际路径', detail: '/Volumes/JAV/S' },
+      { label: '三上悠亚', detail: '一级子文件夹' },
+      { label: '奥田咲', detail: '一级子文件夹' },
+    ]);
+    expect(getStorageScanLogEntries([], '/Volumes/JAV/S')).toEqual([
+      { label: '实际路径', detail: '/Volumes/JAV/S' },
+      { label: '扫描结果', detail: '没有找到一级子文件夹，或该路径不是目录。' },
+    ]);
+  });
+
   it('formats storage import summaries around created and cross-tier names', () => {
     expect(
       formatStorageImportSummaryText(
