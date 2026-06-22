@@ -11,13 +11,16 @@ import type {
 import type { DesktopHealthSnapshot } from '../../core/desktopProbeService';
 import type { DesktopRuntimeConfig } from '../../core/configService';
 import type { TaskState } from '../../core/desktopTaskStore';
+import type { MinnanoActressProfile } from '../../core/minnanoProfileService';
 
 declare global {
   interface Window {
     desktopApi: {
       getHealthSnapshot: () => Promise<DesktopHealthSnapshot>;
       getBootstrapState: () => Promise<DesktopBootstrapState>;
+      getDefaultDatabaseFile: () => Promise<{ filePath: string; databaseUrl: string }>;
       saveConfigAndInit: (config: DesktopRuntimeConfig) => Promise<DesktopBootstrapState>;
+      confirmDatabaseMigration: () => Promise<DesktopBootstrapState>;
       getRuntimeConfig: () => Promise<DesktopRuntimeConfig | null>;
       saveRuntimeConfig: (config: DesktopRuntimeConfig) => Promise<DesktopRuntimeConfig>;
       getAuthState: () => Promise<{ authenticated: boolean }>;
@@ -28,6 +31,8 @@ declare global {
       createActress: (input: DesktopActressInput) => Promise<DesktopActress>;
       updateActress: (id: number, input: DesktopActressInput) => Promise<DesktopActress>;
       deleteActress: (id: number) => Promise<{ success: true }>;
+      fetchMinnanoProfile: (name: string, sourceUrl?: string) => Promise<MinnanoActressProfile>;
+      selectAvatarFile: (actressName: string) => Promise<{ canceled: true } | { canceled: false; avatarPath: string }>;
       createTier: (input: DesktopTierInput) => Promise<DesktopTier>;
       updateTier: (id: number, input: Partial<DesktopTierInput>) => Promise<DesktopTier>;
       deleteTier: (id: number) => Promise<{ success: true }>;
@@ -36,6 +41,7 @@ declare global {
       startSyncEmbyIds: (ids: number[]) => Promise<{ taskId: string }>;
       startSyncMovieCounts: (ids: number[]) => Promise<{ taskId: string }>;
       startTierVideoSync: (tierId: number) => Promise<{ taskId: string }>;
+      startStorageImport: (tierId: number, folderNames: string[]) => Promise<{ taskId: string }>;
       getSyncTask: (taskId: string) => Promise<TaskState | null>;
       cancelSyncTask: (taskId: string) => Promise<{ ok: true }>;
       scanStorage: (tierId: number, path: string) => Promise<{ resolvedPath: string; folders: string[] }>;
